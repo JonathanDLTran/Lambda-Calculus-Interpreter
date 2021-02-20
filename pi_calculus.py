@@ -1,15 +1,20 @@
 """
 Pi Calculus is an interpreter for the pi calculus
+
+Some of the work is based from
+https://cs.pomona.edu/~michael/courses/csci131f16/lec/Lec25.html
+including the Operational Semantics
 """
 
 # ------------ IMPORTS ------------
 import threading
+import random
 
 
 # ------------ AST CLASSES ------------
 
 
-class Process(Object):
+class Process(object):
     def __init__(self):
         pass
 
@@ -60,7 +65,7 @@ class Receive(Process):
         return self.channel
 
     def __str__(self):
-        return f"->{self.channel}[{self.var}].{self.proc}"
+        return f"{self.channel}({self.var}).{self.proc}"
 
 
 class Send(Process):
@@ -82,7 +87,7 @@ class Send(Process):
         return self.channel
 
     def __str__(self):
-        return f"<-{self.channel}({self.message}).{self.proc}"
+        return f"_{self.channel}_<{self.message}>.{self.proc}"
 
 
 class Or(Process):
@@ -118,20 +123,54 @@ class New(Process):
         return self.proc
 
     def __str__(self):
-        return f"\'{self.var}.{self.proc}"
+        return f"\\{self.var}.{self.proc}"
 
 
 # ------------ INTERPRETER CODE ------------
 
+def interpret(state):
+    print(state)
+    assert type(state) == tuple
+    assert len(state) == 2
+    (C, R) = state
+    has_zero = False
+    has_or = False
+    for proc in R:
+        if type(proc) == Zero:
+            has_zero = True
+        elif type(proc) == Or:
+            has_or = True
+    if has_zero:
+        new_R = list(filter(lambda proc: type(proc) != Zero, R))
+        new_state = (C, new_R)
+        return interpret(new_state)
+    elif has_or:
+        new_R = []
+        for proc in R:
+            if type(proc) == Or:
+                new_R.append(proc.get_left())
+                new_R.append(proc.get_right())
+            else:
+                new_R.append(proc)
+        new_state = (C, new_R)
+        return interpret(new_state)
 
-def interpret(process):
+    return 1
+
+
+def interpret_main(process):
     assert isinstance(process, Process)
+    channels = set()
+    running_processes = [process]
+    state = (channels, running_processes)
+    return interpret(state)
 
 
 # ------------ MAIN RUNNEr ------------
 
 def main():
-    pass
+    process = Or(Zero(), Zero())
+    return interpret_main(process)
 
 
 if __name__ == "__main__":
