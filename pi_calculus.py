@@ -127,19 +127,38 @@ class New(Process):
 
 
 # ------------ INTERPRETER CODE ------------
+NEW_VAR = "__X__"
+NEW_VAR_NUM = 1
+
+
+def gen_var():
+    global NEW_VAR_NUM
+    new_var = NEW_VAR + str(NEW_VAR_NUM)
+    NEW_VAR_NUM += 1
+    return new_var
+
+
+def subst(p, c, x):
+    pass
+
 
 def interpret(state):
-    print(state)
     assert type(state) == tuple
     assert len(state) == 2
     (C, R) = state
     has_zero = False
     has_or = False
+    has_respawn = False
+    has_new = False
     for proc in R:
         if type(proc) == Zero:
             has_zero = True
         elif type(proc) == Or:
             has_or = True
+        elif type(proc) == New:
+            has_new = True
+        elif type(proc) == Respawn:
+            has_respawn = True
     if has_zero:
         new_R = list(filter(lambda proc: type(proc) != Zero, R))
         new_state = (C, new_R)
@@ -154,7 +173,29 @@ def interpret(state):
                 new_R.append(proc)
         new_state = (C, new_R)
         return interpret(new_state)
-
+    elif has_new:
+        for i in range(len(R)):
+            proc = R[i]
+            if type(proc) == New:
+                p = proc.get_proc()
+                x = proc.get_var()
+                c = gen_var()
+                new_C = C.add(c)
+                new_R = R[:i] + R[i + 1:]
+                new_R.append(subst(p, c, x))
+                new_state = (new_C, new_R)
+                return interpret(new_state)
+    # make last because respawn could just go forever
+    elif has_respawn:
+        new_R = []
+        for proc in R:
+            if type(proc) == Respawn:
+                new_R.append(proc)
+                new_R.append(proc.get_proc())
+            else:
+                new_R.append(proc)
+        new_state = (C, new_R)
+        return interpret(new_state)
     return 1
 
 
