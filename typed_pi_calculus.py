@@ -82,7 +82,65 @@ class TChannel(Type):
 
 
 class Message(object):
-    pass
+    def __init__(self):
+        pass
+
+    def __str__(self):
+        return f"Abstract Message Class"
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class Var(Message):
+    def __init__(self, var):
+        super().__init__()
+        assert type(var) == str
+        self.var = var
+
+    def __str__(self):
+        return self.var
+
+
+class Int(Message):
+    def __init__(self, i):
+        super().__init__()
+        assert type(i) == int
+        self.i = i
+
+    def __str__(self):
+        return str(self.i)
+
+
+class Bool(Message):
+    def __init__(self):
+        super().__init__()
+        assert type(b) == bool
+        self.b = b
+
+    def __str__(self):
+        return str(self.b)
+
+
+class Unit(Message):
+    def __init__(self):
+        super().__init__()
+
+    def __str__(self):
+        return "()"
+
+
+class Pair(Message):
+    def __init__(self, left, right):
+        super().__init__()
+        assert isinstance(left, Message)
+        assert isinstance(right, Message)
+        self.left = left
+        self.right = right
+
+    def __str__(self):
+        return f"({str(self.left)}, {str(self.right)})"
+
 
 # ------------ PROCESS CLASSES ------------
 
@@ -203,6 +261,8 @@ class New(Process):
 
     def __str__(self):
         return f"\\{self.var}.{self.proc}"
+
+# ------------ TYPE CHCKER CODE ------------
 
 
 # ------------ INTERPRETER CODE ------------
