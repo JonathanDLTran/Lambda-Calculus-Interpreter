@@ -9,7 +9,7 @@ type expr =
 let rec string_of_expr (e : expr) : string = 
   match e with 
   | Index n -> string_of_int n 
-  | Lambda e1 -> "(\\." ^ string_of_expr e1 ^ ")"
+  | Lambda e1 -> "\\." ^ string_of_expr e1 ^ ""
   | App (e1, e2) -> "(" ^ string_of_expr e1 ^ " " ^ string_of_expr e2 ^ ")"
 
 let rec shift c i e = 
@@ -27,14 +27,29 @@ let rec subst e e0 m =
 let beta (e1 : expr) (e2 : expr) : expr = 
   shift 0 (-1) (subst e1 (shift 0 1 e2) 0)
 
-let interpret (e : expr) : expr = 
+let step (e : expr) : expr = 
   match e with 
   | Index _ -> failwith ("Variable " ^ string_of_expr e ^ "cannot be interpreted.")
   | Lambda _ -> e
-  | App (e1, e2) -> beta e1 e2
+  | App (Lambda e1, e2) -> beta e1 e2
+  | App _ -> failwith ("Cannot apply non-function " ^ string_of_expr e)
+
+let is_value (e : expr) : bool = 
+  match e with 
+  | Index _ -> false 
+  | App _ -> false
+  | Lambda _ -> true 
+
+let rec interpret (e : expr) : expr = 
+  if is_value e then e 
+  else 
+    let () = e |> string_of_expr |> print_endline in 
+    let e' = step e in
+    interpret e'
 
 let main () = 
-  Lambda (Index 0)
+  let omega = Lambda (App ((Index 0),(Index 0))) in 
+  App(omega, omega) 
   |> interpret 
   |> string_of_expr
   |> print_endline
