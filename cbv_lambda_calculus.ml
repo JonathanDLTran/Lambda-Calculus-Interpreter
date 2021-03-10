@@ -39,8 +39,9 @@ let rec step (e : expr) : expr =
   match e with 
   | Index _ -> failwith ("Variable " ^ string_of_expr e ^ "cannot be interpreted.")
   | Lambda _ -> failwith ("Lambda expressions do not step " ^ string_of_expr e)
-  | App (v1, e2) when (is_value v1) -> beta v1 e2
+  | App (v1, v2) when (is_value v1) && (is_value v2) -> beta v1 v2
   | App (e1, e2) when not (is_value e1) -> App (interpret e1, e2)
+  | App (e1, e2) when not (is_value e2) -> App (e1, interpret e2)
   | App _ -> failwith ("Cannot apply non-function " ^ string_of_expr e)
 
 and interpret (e : expr) : expr = 
