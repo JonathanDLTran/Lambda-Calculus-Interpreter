@@ -21,6 +21,33 @@ class Constant(Expr):
         return f"{self.value}"
 
 
+class Boolean(Constant):
+    def __init__(self, v):
+        assert type(v) == bool
+        super().__init__(v)
+
+    def __str__(self):
+        return f"{'#t' if self.value else '#f'}"
+
+
+class Integer(Constant):
+    def __init__(self, v):
+        assert type(v) == int
+        super().__init__(v)
+
+    def __str__(self):
+        return f"{self.value}"
+
+
+class String(Constant):
+    def __init__(self, v):
+        assert type(v) == str
+        super().__init__(v)
+
+    def __str__(self):
+        return f'"{self.value}"'
+
+
 class Var(Expr):
     def __init__(self, var):
         assert type(var) == str
@@ -31,7 +58,7 @@ class Var(Expr):
         return self.var
 
     def __str__(self):
-        return f"{self.value}"
+        return f"{self.var}"
 
 
 class Quote(Expr):
@@ -46,20 +73,44 @@ class Quote(Expr):
         return f"(quote {self.datum})"
 
 
+class Unquote(Expr):
+    def __init__(self, expr):
+        super().__init__()
+        self.expr = expr
+
+    def get_expr(self):
+        return self.expr
+
+    def __str__(self):
+        return f"(unquote {self.expr})"
+
+
+class Quasiquote(Expr):
+    def __init__(self, expr):
+        super().__init__()
+        self.expr = expr
+
+    def get_expr(self):
+        return self.expr
+
+    def __str__(self):
+        return f"(quasiquote {self.expr})"
+
+
 class If(Expr):
-    def __init__(self, guard, body):
+    def __init__(self, guard, expr):
         super().__init__()
         self.guard = guard
-        self.body = body
+        self.expr = expr
 
     def get_guard(self):
         return self.guard
 
-    def get_body(self):
-        return self.body
+    def get_expr(self):
+        return self.expr
 
     def __str__(self):
-        return f"(if {self.guard} {self.body})"
+        return f"(if {self.guard} {self.expr})"
 
 
 class IfElse(Expr):
@@ -76,7 +127,7 @@ class IfElse(Expr):
         return self.guard
 
     def get_fst(self):
-        return self.fsg
+        return self.fst
 
     def get_snd(self):
         return self.snd
@@ -104,7 +155,28 @@ class Set(Expr):
 
 
 class App(Expr):
-    pass
+    def __init__(self, expr_list):
+        assert type(expr_list) == list
+        assert len(expr_list) >= 2
+        for expr in expr_list:
+            assert isinstance(expr, Expr)
+        super().__init__()
+        self.fun = expr_list[0]
+        self.args = expr_list[1:]
+
+    def get_args(self):
+        return self.args
+
+    def get_fun(self):
+        return self.fun
+
+    def __str__(self):
+        args_str = ""
+        for i, arg in enumerate(self.args):
+            args_str += str(arg)
+            if i != len(self.args) - 1:
+                args_str += " "
+        return f"({self.fun} {args_str})"
 
 
 class Lambda(Expr):
@@ -126,7 +198,44 @@ class Lambda(Expr):
     def __str__(self):
         args_str = ""
         for i, arg in enumerate(self.args):
-            args_str += arg
-            if i != len(self.args):
+            args_str += str(arg)
+            if i != len(self.args) - 1:
                 args_str += " "
-        return f"(lambda {args_str} {self.body})"
+        return f"(lambda [{args_str}] {self.body})"
+
+
+class Let(Expr):
+    def __init__(self, bindings, bodies):
+        assert type(bindings) == list
+        assert type(bodies) == list
+        assert len(bodies) > 0
+        for body in bodies:
+            assert isinstance(body, Expr)
+        for binding in bindings:
+            assert type(binding) == tuple
+            assert len(binding) == 2
+            name, expr = binding
+            assert type(name) == str
+            assert isinstance(expr, Expr)
+        super().__init__()
+        self.bindings = bindings
+        self.bodies = bodies
+
+    def get_bindings(self):
+        return self.bindings
+
+    def get_bodies(self):
+        return self.bodies
+
+    def __str__(self):
+        bindings_str = ""
+        for i, (name, expr) in enumerate(self.bindings):
+            bindings_str += f"({name} {expr})"
+            if i != len(self.bindings) - 1:
+                bindings_str += " "
+        bodies_str = ""
+        for i, body in enumerate(self.bodies):
+            bodies_str += str(body)
+            if i != len(self.bodies) - 1:
+                bodies_str += " "
+        return f"(let [{bindings_str}] {bodies_str})"
