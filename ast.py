@@ -75,6 +75,7 @@ class Quote(Expr):
 
 class Unquote(Expr):
     def __init__(self, expr):
+        assert isinstance(expr, Expr)
         super().__init__()
         self.expr = expr
 
@@ -87,6 +88,7 @@ class Unquote(Expr):
 
 class Quasiquote(Expr):
     def __init__(self, expr):
+        assert isinstance(expr, Expr)
         super().__init__()
         self.expr = expr
 
@@ -99,6 +101,8 @@ class Quasiquote(Expr):
 
 class If(Expr):
     def __init__(self, guard, expr):
+        assert isinstance(guard, Expr)
+        assert isinstance(expr, Expr)
         super().__init__()
         self.guard = guard
         self.expr = expr
@@ -108,6 +112,14 @@ class If(Expr):
 
     def get_expr(self):
         return self.expr
+
+    def set_guard(self, guard):
+        assert isinstance(guard, Expr)
+        self.guard = guard
+
+    def set_expr(self, expr):
+        assert isinstance(expr, Expr)
+        self.expr = expr
 
     def __str__(self):
         return f"(if {self.guard} {self.expr})"
@@ -126,11 +138,23 @@ class IfElse(Expr):
     def get_guard(self):
         return self.guard
 
+    def set_guard(self, guard):
+        assert isinstance(guard, Expr)
+        self.guard = guard
+
     def get_fst(self):
         return self.fst
 
+    def set_fst(self, expr):
+        assert isinstance(expr, Expr)
+        self.fst = expr
+
     def get_snd(self):
         return self.snd
+
+    def set_snd(self, expr):
+        assert isinstance(expr, Expr)
+        self.snd = expr
 
     def __str__(self):
         return f"(if {self.guard} {self.fst} {self.snd})"
@@ -147,8 +171,16 @@ class Set(Expr):
     def get_var(self):
         return self.var
 
+    def set_var(self, var):
+        assert type(var) == str
+        self.var = var
+
     def get_expr(self):
         return self.expr
+
+    def set_expr(self, expr):
+        assert isinstance(expr, Expr)
+        self.expr = expr
 
     def __str__(self):
         return f"(set! {self.var} {self.expr})"
@@ -167,8 +199,18 @@ class App(Expr):
     def get_args(self):
         return self.args
 
+    def set_args(self, args):
+        assert type(args) == list
+        for arg in args:
+            assert type(arg) == str
+        self.args = args
+
     def get_fun(self):
         return self.fun
+
+    def set_fun(self, fun):
+        assert isinstance(fun, Expr)
+        self.fun = fun
 
     def __str__(self):
         args_str = ""
@@ -195,6 +237,16 @@ class Lambda(Expr):
     def get_body(self):
         return self.body
 
+    def set_args(self, args):
+        assert type(args) == list
+        for arg in args:
+            assert type(arg) == str
+        self.args = args
+
+    def set_body(self, body):
+        assert isinstance(body, Expr)
+        self.body = body
+
     def __str__(self):
         args_str = ""
         for i, arg in enumerate(self.args):
@@ -206,11 +258,11 @@ class Lambda(Expr):
 
 class Let(Expr):
     def __init__(self, bindings, bodies):
-        assert type(bindings) == list
         assert type(bodies) == list
         assert len(bodies) > 0
         for body in bodies:
             assert isinstance(body, Expr)
+        assert type(bindings) == list
         for binding in bindings:
             assert type(binding) == tuple
             assert len(binding) == 2
@@ -226,6 +278,23 @@ class Let(Expr):
 
     def get_bodies(self):
         return self.bodies
+
+    def set_bindings(self, bindings):
+        assert type(bindings) == list
+        for binding in bindings:
+            assert type(binding) == tuple
+            assert len(binding) == 2
+            name, expr = binding
+            assert type(name) == str
+            assert isinstance(expr, Expr)
+        self.bindings = bindings
+
+    def set_bodies(self, bodies):
+        assert type(bodies) == list
+        assert len(bodies) > 0
+        for body in bodies:
+            assert isinstance(body, Expr)
+        self.bodies = bodies
 
     def __str__(self):
         bindings_str = ""
