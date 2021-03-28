@@ -4,8 +4,11 @@ from ast import (Expr,
                  Quote, Unquote, Quasiquote,
                  If, IfElse,
                  Set,
-                 Lambda, App, Let)
-from eval import eval_expr
+                 Lambda, App, Let,
+                 Begin, Def)
+from eval import eval_expr, eval_definition
+import lexer
+import parser
 
 
 def main():
@@ -23,9 +26,12 @@ def main():
     # expr = Quote("a")
     # expr = App([Lambda(["x"], Var("x")), Integer(1)])
     # expr = Quasiquote(Unquote(App([Lambda(["x"], Var("x")), Integer(1)])))
-    expr = Quasiquote(Quasiquote(App([Lambda(["x"], Var("x")), Integer(1)])))
+    # expr = Quasiquote(Quasiquote(App([Lambda(["x"], Var("x")), Integer(1)])))
+    # definition = Begin([App([Lambda(["x"], Var("x")), Integer(1)]), Quasiquote(
+    #     Unquote(App([Lambda(["x"], Var("x")), Integer(1)])))])
+    definition = Begin([Let([("x", Integer(10))], [Var("x")]), Var("x")])
     ctx = {}
-    result, _ = eval_expr(expr, ctx)
+    result, _ = eval_definition(definition, ctx)
     print(result)
     return result
 

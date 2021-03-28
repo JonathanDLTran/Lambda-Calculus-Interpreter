@@ -21,7 +21,9 @@ from ast import (Expr,
                  Quote, Unquote, Quasiquote,
                  If, IfElse,
                  Set,
-                 Lambda, App, Let)
+                 Lambda, App, Let,
+                 Definition,
+                 Begin, Def)
 
 
 def eval_expr(expr, ctx):
@@ -249,3 +251,31 @@ def qeval_let(expr, ctx):
         new_body, new_ctx = qeval_expr(body, new_ctx)
         new_bodies.append(new_body)
     return Let(new_bindings, new_bodies), new_ctx
+
+
+def eval_definition(definition, ctx):
+    assert isinstance(definition, Definition)
+    assert type(ctx) == dict
+    if type(definition) == Def:
+        return eval_def(definition, ctx)
+    elif type(definition) == Begin:
+        exprs = definition.get_exprs()
+        return eval_begin(definition, ctx)
+
+
+def eval_def(definition, ctx):
+    assert type(definition) == Def
+    expr = definition.get_expr()
+    val, new_ctx = eval_expr(expr, ctx)
+    var = definition.get_var()
+    new_ctx[var] = val
+    return var, new_ctx
+
+
+def eval_begin(definition, ctx):
+    assert type(definition) == Begin
+    exprs = definition.get_exprs()
+    new_ctx = deepcopy(ctx)
+    for expr in exprs:
+        val, new_ctx = eval_expr(expr, new_ctx)
+    return val, new_ctx

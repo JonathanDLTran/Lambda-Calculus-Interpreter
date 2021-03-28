@@ -308,3 +308,63 @@ class Let(Expr):
             if i != len(self.bodies) - 1:
                 bodies_str += " "
         return f"(let [{bindings_str}] {bodies_str})"
+
+
+class Definition:
+    def __init__(self):
+        super().__init__()
+
+    def __str__(self):
+        return f"Scheme Definition Abstract Class"
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class Def(Definition):
+    def __init__(self, var, expr):
+        assert type(var) == str
+        assert isinstance(expr, Expr)
+        super().__init__()
+        self.var = var
+        self.expr = expr
+
+    def get_expr(self): return self.expr
+
+    def get_var(self): return self.var
+
+    def set_expr(self, expr):
+        assert isinstance(expr, Expr)
+        self.expr = expr
+
+    def set_var(self, var):
+        assert type(var) == str
+        self.var = var
+
+    def __str__(self):
+        return f"(define {self.var} {self.expr})"
+
+
+class Begin(Definition):
+    def __init__(self, expr_list):
+        assert type(expr_list) == list
+        for expr in expr_list:
+            assert isinstance(expr, Expr)
+        super().__init__()
+        self.exprs = expr_list
+
+    def get_exprs(self): return self.exprs
+
+    def set_exprs(self, exprs):
+        assert type(exprs) == list
+        for expr in exprs:
+            assert isinstance(expr, Expr)
+        self.exprs = exprs
+
+    def __str__(self):
+        exprs_str = ""
+        for i, expr in enumerate(self.exprs):
+            exprs_str += str(expr)
+            if i != len(self.exprs) - 1:
+                exprs_str += " "
+        return f"(begin {exprs_str})"
