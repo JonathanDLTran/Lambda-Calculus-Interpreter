@@ -279,3 +279,128 @@ def eval_begin(definition, ctx):
     for expr in exprs:
         val, new_ctx = eval_expr(expr, new_ctx)
     return val, new_ctx
+
+
+def eval_expr(expr, ctx):
+    assert type(expr) == list
+    if len(expr) == 0:
+        raise RuntimeError(
+            f"Scheme Evaluation Error: Empty Expression: {expr}")
+    fst = expr[0]
+    if fst == "+":
+        pass
+
+
+def eval_plus(expr, ctx):
+    assert len(expr) > 3
+    assert expr[0] == "+"
+    for sub_expr in expr[1:]:
+        eval_expr
+
+
+def bool_to_str(b):
+    assert type(b) == bool
+    if b:
+        return "#t"
+    return "#f"
+
+
+def expr_to_str(expr):
+    assert type(expr) == list
+    if len(expr) == 1:
+        elt = expr[0]
+        if type(elt) == str:
+            return elt
+        elif type(elt) == int:
+            return str(elt)
+        elif type(elt) == bool:
+            return bool_to_str(elt)
+    output = "("
+    for i, elt in enumerate(expr):
+        if type(elt) == str:
+            output += elt
+        elif type(elt) == int:
+            output += str(elt)
+        elif type(elt) == bool:
+            output += bool_to_str(elt)
+        elif type(elt) == list:
+            output += expr_to_str(elt)
+        else:
+            raise RuntimeError(
+                f"Expr to String Error: {elt} does not match any scheme type")
+        if i != len(expr) - 1:
+            output += " "
+    output += ")"
+    return output
+
+
+OPEN_PAREN = "("
+CLOSE_PAREN = ")"
+OPEN_BRACKET = "["
+CLOSE_BRACKET = "]"
+SPACE = " "
+
+
+class String():
+    def __init__(self, s):
+        super().__init__()
+        self.string = s
+
+
+def lex(string):
+    str1 = string.replace(OPEN_PAREN, f"{OPEN_PAREN}{SPACE}")
+    str2 = str1.replace(CLOSE_PAREN, f"{SPACE}{CLOSE_PAREN}")
+    tokens = str2.split()
+    new_tokens = []
+    for token in tokens:
+        if token == "#t":
+            new_tokens.append(True)
+        elif token == "#f":
+            new_tokens.append(False)
+        elif token.isdigit():
+            new_tokens.append(int(token))
+        elif token[0] == '\"' and token[-1] == '\"':
+            new_tokens.append(String(token))
+        else:
+            new_tokens.append(token)
+    return new_tokens
+
+
+def parse(tokens):
+    # if len(tokens) < 2:
+    #     raise RuntimeError(f"Scheme Requires At Least 2 Tokens: {tokens}")
+    # if tokens[0] != OPEN_PAREN:
+    #     raise RuntimeError(
+    #         f"Scheme Requires Expression Begin with Open Parentheses: {tokens}")
+    # if tokens[-1] != CLOSE_PAREN:
+    #     raise RuntimeError(
+    #         f"Scheme Requires Expression End with Close Parentheses: {tokens}")
+
+    # inner_tokens = tokens[1:-1]
+    stack = [[]]
+    for token in tokens:
+        print(stack)
+        if token == OPEN_PAREN:
+            stack.append([])
+        elif token == CLOSE_PAREN:
+            inner_expr = stack.pop()
+            stack[-1].append(inner_expr)
+        else:
+            stack[-1].append(token)
+    print(stack)
+
+    if len(stack) != 1:
+        raise RuntimeError(
+            f"Scheme Requires Open Parentheses Paired With Closing Parentheses: {tokens}")
+
+    return stack.pop().pop()
+
+
+def frontend(string):
+    return parse(lex(string))
+
+
+if __name__ == "__main__":
+    string = r'(+ 1 (+ 3 4) (- 1 2))'
+    string = r'1'
+    print(expr_to_str(frontend(string)))
