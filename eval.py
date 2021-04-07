@@ -25,6 +25,8 @@ from ast import (Expr,
                  Definition,
                  Begin, Def)
 
+from functools import reduce
+
 
 def eval_expr(expr, ctx):
     """
@@ -282,69 +284,115 @@ def eval_begin(definition, ctx):
 
 
 def eval_expr(expr, ctx):
+    if type(expr) == int:
+        return expr
+    elif type(expr) == bool:
+        return expr
+    elif type(expr) == str:
+        return ctx[expr]
+    elif type(expr) == String:
+        return expr
+
     assert type(expr) == list
-    if len(expr) == 0:
-        raise RuntimeError(
-            f"Scheme Evaluation Error: Empty Expression: {expr}")
-    fst = expr[0]
-    if fst == "+":
-        pass
+    assert len(expr) >= 3
+
+    first = expr[0]
+    if first == "+":
+        return eval_add(expr, ctx)
+    elif first == "-":
+        return eval_sub(expr, ctx)
+    elif first == "*":
+        return eval_mul(expr, ctx)
+    elif first == "/":
+        return eval_div(expr, ctx)
 
 
-def eval_plus(expr, ctx):
-    assert len(expr) > 3
+def eval_add(expr, ctx):
+    assert len(expr) >= 3
     assert expr[0] == "+"
+    vals = []
     for sub_expr in expr[1:]:
-        eval_expr
+        val = eval_expr(sub_expr, ctx)
+        vals.append(val)
+    return reduce(lambda val, acc: val + acc, vals, 0)
 
 
-def bool_to_str(b):
-    assert type(b) == bool
-    if b:
-        return "#t"
-    return "#f"
+def eval_sub(expr, ctx):
+    assert len(expr) >= 3
+    assert expr[0] == "-"
+    vals = []
+    first = expr[1]
+    first_val = eval_expr(first, ctx)
+    for sub_expr in expr[2:]:
+        val = eval_expr(sub_expr, ctx)
+        vals.append(val)
+    vals = [first_val] + list(map(lambda v: -v, vals))
+    return reduce(lambda val, acc: val + acc, vals, 0)
 
 
-def expr_to_str(expr):
-    assert type(expr) == list
-    if len(expr) == 1:
-        elt = expr[0]
-        if type(elt) == str:
-            return elt
-        elif type(elt) == int:
-            return str(elt)
-        elif type(elt) == bool:
-            return bool_to_str(elt)
-    output = "("
-    for i, elt in enumerate(expr):
-        if type(elt) == str:
-            output += elt
-        elif type(elt) == int:
-            output += str(elt)
-        elif type(elt) == bool:
-            output += bool_to_str(elt)
-        elif type(elt) == list:
-            output += expr_to_str(elt)
-        else:
-            raise RuntimeError(
-                f"Expr to String Error: {elt} does not match any scheme type")
-        if i != len(expr) - 1:
-            output += " "
-    output += ")"
-    return output
+def eval_mul(expr, ctx):
+    assert len(expr) >= 3
+    assert expr[0] == "*"
+    vals = []
+    for sub_expr in expr[1:]:
+        val = eval_expr(sub_expr, ctx)
+        vals.append(val)
+    return reduce(lambda val, acc: val * acc, vals, 1)
+
+
+def eval_div(expr, ctx):
+    assert len(expr) == 3
+    assert expr[0] == "/"
+    first = eval_expr(expr[1], ctx)
+    second = eval_expr(expr[2], ctx)
+    return int(first/second)
 
 
 OPEN_PAREN = "("
 CLOSE_PAREN = ")"
-OPEN_BRACKET = "["
-CLOSE_BRACKET = "]"
+# OPEN_BRACKET = "["
+# CLOSE_BRACKET = "]"
+BRACES = [
+    OPEN_PAREN,
+    CLOSE_PAREN,
+]
 SPACE = " "
+TRUE = "#t"
+FALSE = "#f"
 
 
 class String():
     def __init__(self, s):
         super().__init__()
         self.string = s
+
+    def get_string(self):
+        return self.string
+
+
+def bool_to_str(b):
+    assert type(b) == bool
+    if b:
+        return TRUE
+    return FALSE
+
+
+def expr_to_str(expr):
+    if type(expr) == int:
+        return str(expr)
+    elif type(expr) == bool:
+        return bool_to_str(expr)
+    elif type(expr) == str:
+        return expr
+    elif type(expr) == String:
+        return expr.get_string()
+
+    assert type(expr) == list
+    output_lst = []
+    for e in expr:
+        output_lst.append(expr_to_str(e))
+    output = f"({' '.join(output_lst)})"
+    return output
 
 
 def lex(string):
@@ -353,9 +401,9 @@ def lex(string):
     tokens = str2.split()
     new_tokens = []
     for token in tokens:
-        if token == "#t":
+        if token == TRUE:
             new_tokens.append(True)
-        elif token == "#f":
+        elif token == FALSE:
             new_tokens.append(False)
         elif token.isdigit():
             new_tokens.append(int(token))
@@ -363,37 +411,76 @@ def lex(string):
             new_tokens.append(String(token))
         else:
             new_tokens.append(token)
+
     return new_tokens
 
 
 def parse(tokens):
-    # if len(tokens) < 2:
-    #     raise RuntimeError(f"Scheme Requires At Least 2 Tokens: {tokens}")
-    # if tokens[0] != OPEN_PAREN:
-    #     raise RuntimeError(
-    #         f"Scheme Requires Expression Begin with Open Parentheses: {tokens}")
-    # if tokens[-1] != CLOSE_PAREN:
-    #     raise RuntimeError(
-    #         f"Scheme Requires Expression End with Close Parentheses: {tokens}")
+    assert type(tokens) == list
+    assert len(tokens) > 0
 
-    # inner_tokens = tokens[1:-1]
-    stack = [[]]
-    for token in tokens:
-        print(stack)
-        if token == OPEN_PAREN:
-            stack.append([])
-        elif token == CLOSE_PAREN:
-            inner_expr = stack.pop()
-            stack[-1].append(inner_expr)
+    if len(tokens) == 1:
+        token = tokens[0]
+        if token in BRACES:
+            raise RuntimeError(
+                f"Scheme Requires At Least 1 Open and Close Parentheses: {token} was provided")
+        if type(token) == int:
+            return token
+        elif type(token) == str:
+            return token
+        elif type(token) == bool:
+            return token
+        elif type(token) == String:
+            return token
+        elif type(token) == list:
+            # preparsed already from recursion
+            return token
         else:
-            stack[-1].append(token)
-    print(stack)
+            raise RuntimeError(f"Scheme does not recognize token {token}.")
 
-    if len(stack) != 1:
+    # is a list form
+    if len(tokens) < 2:
+        raise RuntimeError(f"Scheme Requires At Least 2 Tokens: {tokens}")
+    if tokens[0] != OPEN_PAREN:
         raise RuntimeError(
-            f"Scheme Requires Open Parentheses Paired With Closing Parentheses: {tokens}")
+            f"Scheme Requires Expression Begin with Open Parentheses: {tokens}")
+    if tokens[-1] != CLOSE_PAREN:
+        raise RuntimeError(
+            f"Scheme Requires Expression End with Close Parentheses: {tokens}")
 
-    return stack.pop().pop()
+    inner_tokens = tokens[1:-1]
+    assert len(inner_tokens) >= 2
+
+    exprs = []
+    stack = [[]]
+    num_open_parens = 0
+    for token in inner_tokens:
+        if num_open_parens < 0:
+            raise RuntimeError(
+                f"Too Many Closing Parentheses: Scheme Requires Open \
+                    Parentheses Paired With Closing Parentheses: {tokens}")
+        if token == OPEN_PAREN:
+            num_open_parens += 1
+            stack.append([])
+            stack[-1].append(token)
+        elif token == CLOSE_PAREN:
+            num_open_parens -= 1
+            stack[-1].append(token)
+            top = stack.pop()
+            top_expr = parse(top)
+            stack[-1].append(top_expr)
+        else:
+            if num_open_parens == 0:
+                stack[-1].append(parse([token]))
+            else:
+                stack[-1].append(token)
+    else:
+        if num_open_parens != 0:
+            raise RuntimeError(
+                f"Missing Closing Parentheses: Scheme Requires Open \
+                    Parentheses Paired With Closing Parentheses: {tokens}")
+
+    return stack.pop()
 
 
 def frontend(string):
@@ -403,4 +490,12 @@ def frontend(string):
 if __name__ == "__main__":
     string = r'(+ 1 (+ 3 4) (- 1 2))'
     string = r'1'
+    string = r'#t'
+    string = r'(/ (+ 2 (* 2 3) (- 0 1) (+ 1 3 4)) (+ 2 3))'
+    # string = r'(+ 1 2 3)'
+    # string = r'(- 0 1)'
+    # string = r'(* 3 4 5)'
+    # string = r'(/ 3 4)'
     print(expr_to_str(frontend(string)))
+    context = {}
+    print(expr_to_str(eval_expr(frontend(string), context)))
