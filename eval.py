@@ -106,9 +106,9 @@ def eval_var(expr, ctx):
     return ctx[var], ctx
 
 
-def eval_quote(expr, ctx):
-    assert type(expr) == Quote
-    return expr.get_datum(), ctx
+# def eval_quote(expr, ctx):
+#     assert type(expr) == Quote
+#     return expr.get_datum(), ctx
 
 
 def eval_unquote(expr, ctx):
@@ -294,22 +294,28 @@ def eval_expr(expr, ctx):
         return expr
 
     assert type(expr) == list
-    assert len(expr) >= 3
+    assert len(expr) >= 2
 
     first = expr[0]
-    if first == "+":
+    # Named Arithmetic Operators
+    if first == ADD:
         return eval_add(expr, ctx)
-    elif first == "-":
+    elif first == SUB:
         return eval_sub(expr, ctx)
-    elif first == "*":
+    elif first == MUL:
         return eval_mul(expr, ctx)
-    elif first == "/":
+    elif first == DIV:
         return eval_div(expr, ctx)
+    elif first == EXP:
+        return eval_exp(expr, ctx)
+    # Named Special Forms
+    elif first == QUOTE:
+        return eval_quote(expr, ctx)
 
 
 def eval_add(expr, ctx):
     assert len(expr) >= 3
-    assert expr[0] == "+"
+    assert expr[0] == ADD
     vals = []
     for sub_expr in expr[1:]:
         val = eval_expr(sub_expr, ctx)
@@ -319,7 +325,7 @@ def eval_add(expr, ctx):
 
 def eval_sub(expr, ctx):
     assert len(expr) >= 3
-    assert expr[0] == "-"
+    assert expr[0] == SUB
     vals = []
     first = expr[1]
     first_val = eval_expr(first, ctx)
@@ -332,7 +338,7 @@ def eval_sub(expr, ctx):
 
 def eval_mul(expr, ctx):
     assert len(expr) >= 3
-    assert expr[0] == "*"
+    assert expr[0] == MUL
     vals = []
     for sub_expr in expr[1:]:
         val = eval_expr(sub_expr, ctx)
@@ -342,10 +348,25 @@ def eval_mul(expr, ctx):
 
 def eval_div(expr, ctx):
     assert len(expr) == 3
-    assert expr[0] == "/"
+    assert expr[0] == DIV
     first = eval_expr(expr[1], ctx)
     second = eval_expr(expr[2], ctx)
     return int(first/second)
+
+
+def eval_exp(expr, ctx):
+    assert len(expr) == 3
+    assert expr[0] == EXP
+    first = eval_expr(expr[1], ctx)
+    second = eval_expr(expr[2], ctx)
+    return first ** second
+
+
+def eval_quote(expr, ctx):
+    assert len(expr) == 2
+    assert expr[0] == QUOTE
+    # no eval
+    return expr[1]
 
 
 OPEN_PAREN = "("
@@ -359,6 +380,12 @@ BRACES = [
 SPACE = " "
 TRUE = "#t"
 FALSE = "#f"
+ADD = "+"
+SUB = "-"
+MUL = "*"
+DIV = "/"
+EXP = "^"
+QUOTE = "quote"
 
 
 class String():
@@ -496,6 +523,8 @@ if __name__ == "__main__":
     # string = r'(- 0 1)'
     # string = r'(* 3 4 5)'
     # string = r'(/ 3 4)'
+    string = r'(^ 2 3)'
+    string = r'(quote (1 2 4))'
     print(expr_to_str(frontend(string)))
     context = {}
     print(expr_to_str(eval_expr(frontend(string), context)))
