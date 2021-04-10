@@ -385,6 +385,8 @@ def eval_expr(expr, ctx, in_quasi):
         return eval_consstream(expr, ctx, in_quasi)
     elif first == CDR_STREAM:
         return eval_cdrstream(expr, ctx, in_quasi)
+    elif first == APPEND:
+        return eval_append(expr, ctx, in_quasi)
     # match on a macro
     elif type(first) != list and first in ctx and type(ctx[first]) == Macro:
         return eval_macro(expr, ctx, in_quasi)
@@ -716,10 +718,26 @@ def eval_define(expr, ctx, in_quasi):
         assert len(names) >= 2
         function_name = names[0]
         args = names[1:]
-        for arg in args:
-            assert type(arg) == str
+        is_variadic = False
+        final_args = []
+        for i, arg in enumerate(args):
+            if i != len(args) - 1:
+                assert type(arg) == str
+                final_args.append(arg)
+            else:
+                # last argument can be called Variadic
+                if type(arg) == list:
+                    assert len(arg) == 2
+                    fst, snd = arg
+                    assert fst == VARIADIC
+                    assert type(snd) == str
+                    is_variadic = True
+                    final_args.append(snd)
+                else:
+                    assert type(arg) == str
+                    final_args.append(arg)
         bodies = expr[2:]
-        ctx[function_name] = Lambda(args, bodies)
+        ctx[function_name] = Lambda(final_args, bodies, is_variadic)
         return function_name
     else:
         # variable define
@@ -737,8 +755,26 @@ def eval_lambda(expr, ctx, in_quasi):
     if in_quasi:
         return handle_quasi(expr, ctx, in_quasi)
     params = expr[1]
+    final_params = []
+    is_variadic = False
+    for i, param in enumerate(params):
+        if i != len(params) - 1:
+            assert type(param) == str
+            final_params.append(param)
+        else:
+            # last argument can be called Variadic
+            if type(param) == list:
+                assert len(param) == 2
+                fst, snd = param
+                assert fst == VARIADIC
+                assert type(snd) == str
+                is_variadic = True
+                final_params.append(snd)
+            else:
+                assert type(param) == str
+                final_params.append(param)
     bodies = expr[2:]
-    return Lambda(params, bodies)
+    return Lambda(final_params, bodies, is_variadic)
 
 
 def eval_app(expr, ctx, in_quasi):
@@ -750,14 +786,24 @@ def eval_app(expr, ctx, in_quasi):
     assert type(_lambda) == Lambda
     args = list(map(lambda a: eval_expr(a, ctx, in_quasi), expr[1:]))
     param_names = _lambda.get_args()
-    if len(param_names) != len(args):
+    is_variadic = _lambda.get_is_variadic()
+    if (not is_variadic and len(param_names) != len(args)) or len(param_names) > len(args):
         raise RuntimeError(
             f"Arities Mismatch in application: expected: {len(param_names)}, got {len(args)} instead.")
     bodies = _lambda.get_bodies()
     bodies_w_begin = [BEGIN] + bodies
-    for (param, arg) in zip(param_names, args):
+    if (not is_variadic):
+        for (param, arg) in zip(param_names, args):
+            assert type(param) == str
+            ctx[param] = arg
+        return eval_expr(bodies_w_begin, ctx, in_quasi)
+    common_length = len(param_names)
+    for (param, arg) in zip(param_names[:common_length - 1], args[:common_length - 1]):
         assert type(param) == str
         ctx[param] = arg
+    # variadic part
+    ctx[param_names[common_length - 1]
+        ] = eval_expr([LIST] + args[common_length - 1:], ctx, in_quasi)
     return eval_expr(bodies_w_begin, ctx, in_quasi)
 
 
@@ -968,6 +1014,24 @@ def eval_for(expr, ctx, in_quasi, is_forlist):
     return 0
 
 
+def eval_append(expr, ctx, in_quasi):
+    assert type(expr) == list
+    assert len(expr) >= 3
+    assert expr[0] == APPEND
+    if in_quasi:
+        return handle_quasi(expr, ctx, in_quasi)
+    lists = expr[1:]
+    evaluated_lists = []
+    for lst in lists:
+        evaluated_lists.append(eval_expr(lst, ctx, in_quasi))
+    final_lst = []
+    for lst in evaluated_lists:
+        assert type(lst) == list
+        for v in lst:
+            final_lst.append(v)
+    return final_lst
+
+
 def handle_quasi(expr, ctx, in_quasi):
     assert type(expr) == list
     assert len(expr) > 1
@@ -1040,6 +1104,8 @@ DELAY = "delay"
 FORCE = "force"
 CONS_STREAM = "cons-stream"
 CDR_STREAM = "cdr-stream"
+VARIADIC = "variadic"
+APPEND = "append"
 
 COUNTER = 0
 GENERATED_SYMBOL = "gen_sym"
@@ -1064,20 +1130,25 @@ class String():
 
 
 class Lambda():
-    def __init__(self, args, bodies):
+    def __init__(self, args, bodies, is_variadic):
         assert type(args) == list
         assert len(args) >= 1
         assert type(bodies) == list
         assert len(bodies) >= 1
+        assert type(is_variadic) == bool
         super().__init__()
         self.args = args
         self.bodies = bodies
+        self.is_variadic = is_variadic
 
     def get_args(self):
         return self.args
 
     def get_bodies(self):
         return self.bodies
+
+    def get_is_variadic(self):
+        return self.is_variadic
 
 
 class Delay():
@@ -1162,7 +1233,7 @@ def expr_to_str(expr):
         bodies_combined = " ".join(bodies_strs)
         return f'(lambda ({args_str}) {bodies_combined})'
     elif type(expr) == Cons:
-        return f'(cons {expr.get_left()} {expr.get_right()})'
+        return f'(cons {expr_to_str(expr.get_left())} {expr_to_str(expr.get_right())})'
     elif type(expr) == Delay:
         return f'#[promise (unforced)]'
     elif type(expr) == Macro:
@@ -1324,7 +1395,12 @@ if __name__ == "__main__":
              r'(begin (define p (delay (/ 1 1))) (force p))',
              r'(begin (define (decr count) (if (eq? count 0) (println "Done") (begin (println count) (decr (- count 1))) )) (decr 3))',
              r'(cons-stream 2 3)',
-             r'(cdr-stream (cons-stream 2 3))']
+             r'(cdr-stream (cons-stream 2 3))',
+             r'(define my-list (lambda ((variadic x)) x))',
+             r'(begin (define my-list (lambda ((variadic x)) x)) (my-list 2 3 4))',
+             r'(list (quote (1 2)) (quote (3 4)))',
+             r'(append (quote (1 2)) (quote (3 4)))',
+             r'(append (quote ((1 2) (3 4))) (quote ((5 6) (7 8))))']
     for string in tests:
         print("-------------------")
         print(expr_to_str(frontend(string)))
