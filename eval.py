@@ -34,6 +34,7 @@ BRACES = [
     OPEN_PAREN,
     CLOSE_PAREN,
 ]
+QUOTATION_MARK = '\"'
 SPACE = " "
 TRUE = "#t"
 FALSE = "#f"
@@ -102,7 +103,7 @@ class String():
         self.string = s
 
     def __add__(self, s):
-        return String(self.string[: -1] + s.string[1:])
+        return String(self.string + s.string)
 
     def get_string(self):
         return self.string
@@ -213,7 +214,7 @@ def expr_to_str(expr):
     elif type(expr) == str:
         return expr
     elif type(expr) == String:
-        return f'{expr.get_string()}'
+        return f'"{expr.get_string()}"'
     elif type(expr) == Lambda:
         return lambda_to_str(expr)
     elif type(expr) == Cons:
@@ -1095,10 +1096,51 @@ def handle_quasi(expr, ctx, in_quasi):
     return remainder
 
 
+def split_tokens(string):
+    """
+    Does not supported nested string data
+
+    Tokenizes string
+    """
+    tokens = []
+    in_string = False
+    current_string = ''
+    current_chunk = ''
+    for c in string:
+        if c == QUOTATION_MARK and not in_string:
+            in_string = True
+            current_string += c
+            # clear current chunk
+            current_chunk_tokens = current_chunk.split()
+            tokens += current_chunk_tokens
+            current_chunk = ''
+        elif c == QUOTATION_MARK and in_string:
+            in_string = False
+            current_string += c
+            # clear current string
+            tokens.append(current_string)
+            current_string = ''
+        elif in_string:
+            current_string += c
+        else:
+            current_chunk += c
+    # finish by clearing current chunk
+    if current_chunk != '':
+        current_chunk_tokens = current_chunk.split()
+        tokens += current_chunk_tokens
+        current_chunk = ''
+
+    # if string not completed at end, illegal program
+    if current_string != '':
+        raise RuntimeError(f"String Not Terminated: {string}.")
+
+    return tokens
+
+
 def lex(string):
     str1 = string.replace(OPEN_PAREN, f"{OPEN_PAREN}{SPACE}")
     str2 = str1.replace(CLOSE_PAREN, f"{SPACE}{CLOSE_PAREN}")
-    tokens = str2.split()
+    tokens = split_tokens(str2)
     new_tokens = []
     for token in tokens:
         if token == TRUE:
@@ -1107,8 +1149,8 @@ def lex(string):
             new_tokens.append(False)
         elif token.isdigit():
             new_tokens.append(int(token))
-        elif token[0] == '\"' and token[-1] == '\"':
-            new_tokens.append(String(token))
+        elif token[0] == QUOTATION_MARK and token[-1] == QUOTATION_MARK:
+            new_tokens.append(String(token[1:-1]))
         else:
             new_tokens.append(token)
 
@@ -1270,7 +1312,10 @@ if __name__ == "__main__":
              r'(match (list 1 (list 2 3) (list 4 5) (list 6 7)) ((list x (list a b) (list c d) (list k l)) (+ x a b c d k l)))',
              r'(match (cons (cons 3 (cons 3 6)) 3) ((cons (cons a (cons b c)) d) (+ a b c d)))',
              r'(match (cons (cons 3 (cons 3 6)) (list 2 3)) ((cons (cons a (cons b c)) d) (+ a b c) d))',
-             r'(match (cons (cons 3 (cons 3 6)) (list 3 3)) ((cons (cons a (cons b c)) (list d e)) (+ a b c d e)))']
+             r'(match (cons (cons 3 (cons 3 6)) (list 3 3)) ((cons (cons a (cons b c)) (list d e)) (+ a b c d e)))',
+             r'""',
+             r'"hello world"',
+             r'(^ (^ "hello" " ") "world")']
     for string in tests:
         print("-------------------")
         print(expr_to_str(frontend(string)))
