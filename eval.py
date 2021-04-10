@@ -337,6 +337,16 @@ def eval_expr(expr, ctx, in_quasi):
         return eval_and(expr, ctx, in_quasi)
     elif first == OR:
         return eval_or(expr, ctx, in_quasi)
+    elif first == NEQ:
+        return eval_neq(expr, ctx, in_quasi)
+    elif first == LT:
+        return eval_lt(expr, ctx, in_quasi)
+    elif first == LTE:
+        return eval_lte(expr, ctx, in_quasi)
+    elif first == GT:
+        return eval_gt(expr, ctx, in_quasi)
+    elif first == GTE:
+        return eval_gte(expr, ctx, in_quasi)
     elif first == NOT:
         return eval_not(expr, ctx, in_quasi)
     elif first == BEGIN:
@@ -355,9 +365,11 @@ def eval_expr(expr, ctx, in_quasi):
         return eval_apply(expr, ctx, in_quasi)
     elif first == MAP:
         return eval_map(expr, ctx, in_quasi)
+    elif first == DEFINE_MACRO:
+        return eval_define_macro(expr, ctx, in_quasi)
     # match on a macro
-    elif first in ctx and type(ctx[first]) == Macro:
-        pass
+    elif type(first) != list and first in ctx and type(ctx[first]) == Macro:
+        return eval_macro(expr, ctx, in_quasi)
     # return forms that are quasiquoted, comes before application
     elif in_quasi:
         return expr
@@ -439,6 +451,56 @@ def eval_concat(expr, ctx, in_quasi):
     return first + second
 
 
+def eval_lt(expr, ctx, in_quasi):
+    assert len(expr) == 3
+    assert expr[0] == LT
+    if in_quasi:
+        return handle_quasi(expr, ctx, in_quasi)
+    first = eval_expr(expr[1], ctx, in_quasi)
+    second = eval_expr(expr[2], ctx, in_quasi)
+    return first < second
+
+
+def eval_gt(expr, ctx, in_quasi):
+    assert len(expr) == 3
+    assert expr[0] == GT
+    if in_quasi:
+        return handle_quasi(expr, ctx, in_quasi)
+    first = eval_expr(expr[1], ctx, in_quasi)
+    second = eval_expr(expr[2], ctx, in_quasi)
+    return first > second
+
+
+def eval_lte(expr, ctx, in_quasi):
+    assert len(expr) == 3
+    assert expr[0] == LTE
+    if in_quasi:
+        return handle_quasi(expr, ctx, in_quasi)
+    first = eval_expr(expr[1], ctx, in_quasi)
+    second = eval_expr(expr[2], ctx, in_quasi)
+    return first <= second
+
+
+def eval_gte(expr, ctx, in_quasi):
+    assert len(expr) == 3
+    assert expr[0] == GTE
+    if in_quasi:
+        return handle_quasi(expr, ctx, in_quasi)
+    first = eval_expr(expr[1], ctx, in_quasi)
+    second = eval_expr(expr[2], ctx, in_quasi)
+    return first >= second
+
+
+def eval_neq(expr, ctx, in_quasi):
+    assert len(expr) == 3
+    assert expr[0] == NEQ
+    if in_quasi:
+        return handle_quasi(expr, ctx, in_quasi)
+    first = eval_expr(expr[1], ctx, in_quasi)
+    second = eval_expr(expr[2], ctx, in_quasi)
+    return first != second
+
+
 def eval_quote(expr, ctx, in_quasi):
     # does not matter if it is in quasi or not
     assert len(expr) == 2
@@ -476,8 +538,8 @@ def eval_eq(expr, ctx, in_quasi):
     assert expr[0] == EQ
     if in_quasi:
         return handle_quasi(expr, ctx, in_quasi)
-    fst = eval_expr(expr[1], ctx)
-    snd = eval_expr(expr[2], ctx)
+    fst = eval_expr(expr[1], ctx, in_quasi)
+    snd = eval_expr(expr[2], ctx, in_quasi)
     return fst == snd
 
 
@@ -741,6 +803,41 @@ def eval_map(expr, ctx, in_quasi):
     return final_list
 
 
+def eval_define_macro(expr, ctx, in_quasi):
+    assert type(expr) == list
+    assert len(expr) >= 3
+    assert expr[0] == DEFINE_MACRO
+    if in_quasi:
+        return handle_quasi(expr, ctx, in_quasi)
+    binding = expr[1]
+    bodies = expr[2:]
+    assert len(binding) >= 2
+    name = binding[0]
+    params = binding[1:]
+    macro = Macro(params, bodies)
+    ctx[name] = macro
+    return name
+
+
+def eval_macro(expr, ctx, in_quasi):
+    assert type(expr) == list
+    assert len(expr) >= 2
+    assert expr[0] in ctx and type(ctx[expr[0]]) == Macro
+    if in_quasi:
+        return handle_quasi(expr, ctx, in_quasi)
+    # at each use, we need to replicate the macro to get new fresh symbols
+    macro_name = expr[0]
+    macro = ctx[macro_name]
+    macro.replicate()
+    ctx[macro_name] = macro
+    # finished replication of macro
+    new_expr = deepcopy(expr)
+    macro = ctx[macro_name]
+    macro_expr = [LAMBDA, macro.get_args(), [BEGIN] + macro.get_bodies()]
+    new_expr = [macro_expr, *new_expr[1:]]
+    return eval_expr(new_expr, ctx, in_quasi)
+
+
 def handle_quasi(expr, ctx, in_quasi):
     assert type(expr) == list
     assert len(expr) > 1
@@ -802,6 +899,20 @@ FORLIST = "for/list"
 DEFINE_MACRO = "define-macro"
 APPLY = "apply"
 MAP = "map"
+LT = "<"
+GT = ">"
+LTE = "<="
+GTE = ">="
+NEQ = "neq?"
+
+COUNTER = 0
+GENERATED_SYMBOL = "gen_sym"
+
+
+def gensym():
+    global COUNTER
+    COUNTER += 1
+    return f"__{GENERATED_SYMBOL}_{COUNTER}__"
 
 
 class String():
@@ -847,7 +958,39 @@ class Cons():
 
 
 class Macro():
-    pass
+    def __init__(self, args, bodies):
+        assert type(args) == list
+        assert len(args) >= 1
+        assert type(bodies) == list
+        assert len(bodies) >= 1
+        super().__init__()
+        self.args = args
+        self.bodies = bodies
+
+    def replicate(self):
+        # need to process to generate random symbols
+        args = deepcopy(self.args)
+        bodies = deepcopy(self.bodies)
+        sym_map = {}
+        for arg in args:
+            sym_map[arg] = gensym()
+        self.args = [sym_map[arg] for arg in args]
+        new_bodies = []
+        for body in bodies:
+            new_body = []
+            for sym in body:
+                if sym in sym_map:
+                    new_body.append(sym_map[sym])
+                else:
+                    new_body.append(sym)
+            new_bodies.append(new_body)
+        self.bodies = new_bodies
+
+    def get_args(self):
+        return self.args
+
+    def get_bodies(self):
+        return self.bodies
 
 
 def bool_to_str(b):
@@ -875,6 +1018,9 @@ def expr_to_str(expr):
         return f'(lambda ({args_str}) {bodies_combined})'
     elif type(expr) == Cons:
         return f'(cons {expr.get_left()} {expr.get_right()})'
+    elif type(expr) == Macro:
+        raise RuntimeError(
+            f"Macro can never be an evaluated expression: {expr}")
 
     assert type(expr) == list
     output_lst = []
@@ -1014,6 +1160,14 @@ if __name__ == "__main__":
     string = r'(cdr (cons 2 3))'
     string = r'(apply + 2 1 4 (quote (1 2)))'
     string = r'(map * (quote (1 2 3)) (quote (1 2 3)) (quote (1 2 3)))'
+    string = r'(define-macro (when x y) (eq? x y))'
+    string = r'(begin (define-macro (when x y) (eq? x y)) (when 3 4))'
+    string = r'(neq? 1 2)'
+    string = r'(neq? 0 0)'
+    string = r'(< 0 0)'
+    string = r'(> 1 0)'
+    string = r'(<= 0 1)'
+    string = r'(>= 2 3)'
     print(expr_to_str(frontend(string)))
     context = {}
     print(expr_to_str(eval_expr(frontend(string), context, False)))
