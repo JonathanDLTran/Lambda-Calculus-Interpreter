@@ -289,7 +289,11 @@ def eval_expr(expr, ctx, in_quasi):
     elif type(expr) == bool:
         return expr
     elif type(expr) == str:
-        return ctx[expr]
+        if expr in ctx:
+            return ctx[expr]
+        # this is a symbol under quasi
+        elif in_quasi:
+            return expr
     elif type(expr) == String:
         return expr
 
@@ -367,17 +371,45 @@ def eval_expr(expr, ctx, in_quasi):
         return eval_map(expr, ctx, in_quasi)
     elif first == DEFINE_MACRO:
         return eval_define_macro(expr, ctx, in_quasi)
+    elif first == COND:
+        return eval_cond(expr, ctx, in_quasi)
+    elif first == FOR:
+        return eval_for(expr, ctx, in_quasi, False)
+    elif first == FORLIST:
+        return eval_for(expr, ctx, in_quasi, True)
+    elif first == DELAY:
+        return eval_delay(expr, ctx, in_quasi)
+    elif first == FORCE:
+        return eval_force(expr, ctx, in_quasi)
+    elif first == CONS_STREAM:
+        return eval_consstream(expr, ctx, in_quasi)
+    elif first == CDR_STREAM:
+        return eval_cdrstream(expr, ctx, in_quasi)
     # match on a macro
     elif type(first) != list and first in ctx and type(ctx[first]) == Macro:
         return eval_macro(expr, ctx, in_quasi)
     # return forms that are quasiquoted, comes before application
     elif in_quasi:
-        return expr
+        return eval_in_quasi_return(expr, ctx, in_quasi)
     # forms that are applications
     elif len(expr) >= 2:
         return eval_app(expr, ctx, in_quasi)
     else:
         raise RuntimeError(f"Expression could not be matched: {expr}.")
+
+
+def eval_in_quasi_return(expr, ctx, in_quasi):
+    lst = []
+    for e in expr:
+        v = eval_expr(e, ctx, in_quasi)
+        if type(v) == tuple:
+            assert len(v) == 2 and v[1] == True
+            vals, _ = v
+            for value in vals:
+                lst.append(value)
+        else:
+            lst.append(v)
+    return lst
 
 
 def eval_add(expr, ctx, in_quasi):
@@ -514,7 +546,8 @@ def eval_println(expr, ctx, in_quasi):
     assert expr[0] == PRINTLN
     if in_quasi:
         return handle_quasi(expr, ctx, in_quasi)
-    print(expr_to_str(expr[1]))
+    val = eval_expr(expr[1], ctx, in_quasi)
+    print(expr_to_str(val))
     # return an int
     return 0
 
@@ -580,7 +613,7 @@ def eval_list(expr, ctx, in_quasi):
         return handle_quasi(expr, ctx, in_quasi)
     lst = []
     for sub_expr in expr[1:]:
-        lst.append(eval_expr(sub_expr, ctx))
+        lst.append(eval_expr(sub_expr, ctx, in_quasi))
     return lst
 
 
@@ -734,8 +767,8 @@ def eval_cons(expr, ctx, in_quasi):
     assert expr[0] == CONS
     if in_quasi:
         return handle_quasi(expr, ctx, in_quasi)
-    left = expr[1]
-    right = expr[2]
+    left = eval_expr(expr[1], ctx, in_quasi)
+    right = eval_expr(expr[2], ctx, in_quasi)
     return Cons(left, right)
 
 
@@ -819,6 +852,46 @@ def eval_define_macro(expr, ctx, in_quasi):
     return name
 
 
+def eval_delay(expr, ctx, in_quasi):
+    assert type(expr) == list
+    assert len(expr) == 2
+    assert expr[0] == DELAY
+    if in_quasi:
+        return handle_quasi(expr, ctx, in_quasi)
+    return Delay(expr[1])
+
+
+def eval_consstream(expr, ctx, in_quasi):
+    assert type(expr) == list
+    assert len(expr) == 3
+    assert expr[0] == CONS_STREAM
+    if in_quasi:
+        return handle_quasi(expr, ctx, in_quasi)
+    new_expr = [CONS, expr[1], [DELAY, expr[2]]]
+    return eval_expr(new_expr, ctx, in_quasi)
+
+
+def eval_cdrstream(expr, ctx, in_quasi):
+    assert type(expr) == list
+    assert len(expr) == 2
+    assert expr[0] == CDR_STREAM
+    if in_quasi:
+        return handle_quasi(expr, ctx, in_quasi)
+    new_expr = [FORCE, [CDR, expr[1]]]
+    return eval_expr(new_expr, ctx, in_quasi)
+
+
+def eval_force(expr, ctx, in_quasi):
+    assert type(expr) == list
+    assert len(expr) == 2
+    assert expr[0] == FORCE
+    if in_quasi:
+        return handle_quasi(expr, ctx, in_quasi)
+    delay_expr = eval_expr(expr[1], ctx, in_quasi)
+    assert type(delay_expr) == Delay
+    return eval_expr(delay_expr.get_expr(), ctx, in_quasi)
+
+
 def eval_macro(expr, ctx, in_quasi):
     assert type(expr) == list
     assert len(expr) >= 2
@@ -836,6 +909,63 @@ def eval_macro(expr, ctx, in_quasi):
     macro_expr = [LAMBDA, macro.get_args(), [BEGIN] + macro.get_bodies()]
     new_expr = [macro_expr, *new_expr[1:]]
     return eval_expr(new_expr, ctx, in_quasi)
+
+
+def eval_cond(expr, ctx, in_quasi):
+    assert type(expr) == list
+    assert len(expr) >= 2
+    assert expr[0] == COND
+    if in_quasi:
+        return handle_quasi(expr, ctx, in_quasi)
+    clauses = expr[1:]
+    for i, clause in enumerate(clauses):
+        assert type(clause) == list
+        assert len(clause) == 2
+        test, e = clause
+        if test == ELSE and i != len(clauses) - 1:
+            raise RuntimeError(f"Else must be last condition in cond: {expr}.")
+        if test == ELSE:
+            return eval_expr(e, ctx, in_quasi)
+        b = eval_expr(test, ctx, in_quasi)
+        assert type(b) == bool
+        # if true on condition, evaluate other side
+        if b:
+            return eval_expr(e, ctx, in_quasi)
+    # undefined return on no matching conditions
+    return 0
+
+
+def eval_for(expr, ctx, in_quasi, is_forlist):
+    assert type(expr) == list
+    assert len(expr) >= 3
+    assert (expr[0] == FOR and not is_forlist) or (
+        expr[0] == FORLIST and is_forlist)
+    if in_quasi:
+        return handle_quasi(expr, ctx, in_quasi)
+    bindings = expr[1]
+    bodies = expr[2:]
+    new_bodies = [BEGIN] + bodies
+    variables = []
+    lists = []
+    for binding in bindings:
+        assert type(binding) == list
+        assert len(binding) == 2
+        var, lst = binding
+        assert type(var) == str
+        variables.append(var)
+        value_lst = eval_expr(lst, ctx, in_quasi)
+        lists.append(value_lst)
+    final_list = []
+    for values in zip(*lists):
+        val_list = list(values)
+        for var, val in zip(variables, values):
+            ctx[var] = val
+        final_val = eval_expr(new_bodies, ctx, in_quasi)
+        final_list.append(final_val)
+    if is_forlist:
+        return final_list
+    # for does not return list
+    return 0
 
 
 def handle_quasi(expr, ctx, in_quasi):
@@ -899,11 +1029,17 @@ FORLIST = "for/list"
 DEFINE_MACRO = "define-macro"
 APPLY = "apply"
 MAP = "map"
-LT = "<"
-GT = ">"
-LTE = "<="
-GTE = ">="
+LT = "lt?"
+GT = "gt?"
+LTE = "lte?"
+GTE = "gte?"
 NEQ = "neq?"
+COND = "cond"
+ELSE = "else"
+DELAY = "delay"
+FORCE = "force"
+CONS_STREAM = "cons-stream"
+CDR_STREAM = "cdr-stream"
 
 COUNTER = 0
 GENERATED_SYMBOL = "gen_sym"
@@ -942,6 +1078,15 @@ class Lambda():
 
     def get_bodies(self):
         return self.bodies
+
+
+class Delay():
+    def __init__(self, expr):
+        super().__init__()
+        self.expr = expr
+
+    def get_expr(self):
+        return self.expr
 
 
 class Cons():
@@ -1018,6 +1163,8 @@ def expr_to_str(expr):
         return f'(lambda ({args_str}) {bodies_combined})'
     elif type(expr) == Cons:
         return f'(cons {expr.get_left()} {expr.get_right()})'
+    elif type(expr) == Delay:
+        return f'#[promise (unforced)]'
     elif type(expr) == Macro:
         raise RuntimeError(
             f"Macro can never be an evaluated expression: {expr}")
@@ -1123,51 +1270,63 @@ def frontend(string):
 
 
 if __name__ == "__main__":
-    string = r'(+ 1 (+ 3 4) (- 1 2))'
-    string = r'1'
-    string = r'#t'
-    string = r'(/ (+ 2 (* 2 3) (- 0 1) (+ 1 3 4)) (+ 2 3))'
-    string = r'(+ 1 2 3)'
-    string = r'(- 0 1)'
-    string = r'(* 3 4 5)'
-    string = r'(/ 3 4)'
-    string = r'(** 2 3)'
-    string = r'(println (quote (1 2 4)))'
-    string = r'(eq? 1 2)'
-    string = r'(list 1 (+ 1 2) 3)'
-    string = r'(quasiquote (list 3 (unquote (+ 2 3))))'
-    string = r'(quasiquote (quasiquote (unquote (+ 2 3))))'
-    string = r'"Hello"'
-    string = r'(quasiquote (3 (unquote-splicing (list 3 4)) 5))'
-    string = r'(if #t (+ 2 3) (- 0 1))'
-    string = r'(let ((x 3) (x 4)) (+ x 2))'
-    string = r'(let* ((x 3) (x 4)) (+ x 2))'
-    string = r'(and #t #t #f #f #t)'
-    string = r'(or #t #t #f #f #t)'
-    string = r'(not #f)'
-    string = r'(not #t)'
-    string = r'(begin 2 (+ 2 3) (if #f (- 2 3) (+ 3 4)))'
-    string = r'(^ "hello" "world")'
-    string = r'(begin (let ((x 3) (x 4)) (+ x 2)) (set! x 5) x)'
-    string = r'(begin (define x 3) x)'
-    string = r'(begin (define (f x) x))'
-    string = r'(lambda (x y) (+ x y))'
-    string = r'((lambda (x y) (+ x y)) 2 3)'
-    string = r'((lambda (x) (+ x 0)) 2)'
-    string = r'(begin (define (f x) (* x x)) (f 3))'
-    string = r'(cons 2 3)'
-    string = r'(car (cons 2 3))'
-    string = r'(cdr (cons 2 3))'
-    string = r'(apply + 2 1 4 (quote (1 2)))'
-    string = r'(map * (quote (1 2 3)) (quote (1 2 3)) (quote (1 2 3)))'
-    string = r'(define-macro (when x y) (eq? x y))'
-    string = r'(begin (define-macro (when x y) (eq? x y)) (when 3 4))'
-    string = r'(neq? 1 2)'
-    string = r'(neq? 0 0)'
-    string = r'(< 0 0)'
-    string = r'(> 1 0)'
-    string = r'(<= 0 1)'
-    string = r'(>= 2 3)'
-    print(expr_to_str(frontend(string)))
-    context = {}
-    print(expr_to_str(eval_expr(frontend(string), context, False)))
+    tests = [r'(+ 1 (+ 3 4) (- 1 2))',
+             r'1',
+             r'#t',
+             r'(/ (+ 2 (* 2 3) (- 0 1) (+ 1 3 4)) (+ 2 3))',
+             r'(+ 1 2 3)',
+             r'(- 0 1)',
+             r'(* 3 4 5)',
+             r'(/ 3 4)',
+             r'(** 2 3)',
+             r'(println (quote (1 2 4)))',
+             r'(eq? 1 2)',
+             r'(list 1 (+ 1 2) 3)',
+             r'(quasiquote (list 3 (unquote (+ 2 3))))',
+             r'(quasiquote (quasiquote (unquote (+ 2 3))))',
+             r'"Hello"',
+             r'(quasiquote (3 (unquote-splicing (list 3 4)) 5))',
+             r'(if #t (+ 2 3) (- 0 1))',
+             r'(let ((x 3) (x 4)) (+ x 2))',
+             r'(let* ((x 3) (x 4)) (+ x 2))',
+             r'(and #t #t #f #f #t)',
+             r'(or #t #t #f #f #t)',
+             r'(not #f)',
+             r'(not #t)',
+             r'(begin 2 (+ 2 3) (if #f (- 2 3) (+ 3 4)))',
+             r'(^ "hello" "world")',
+             r'(begin (let ((x 3) (x 4)) (+ x 2)) (set! x 5) x)',
+             r'(begin (define x 3) x)',
+             r'(begin (define (f x) x))',
+             r'(lambda (x y) (+ x y))',
+             r'((lambda (x y) (+ x y)) 2 3)',
+             r'((lambda (x) (+ x 0)) 2)',
+             r'(begin (define (f x) (* x x)) (f 3))',
+             r'(cons 2 3)',
+             r'(car (cons 2 3))',
+             r'(cdr (cons 2 3))',
+             r'(apply + 2 1 4 (quote (1 2)))',
+             r'(map * (quote (1 2 3)) (quote (1 2 3)) (quote (1 2 3)))',
+             r'(define-macro (when x y) (eq? x y))',
+             r'(begin (define-macro (when x y) (eq? x y)) (when 3 4))',
+             r'(neq? 1 2)',
+             r'(neq? 0 0)',
+             r'(lt? 0 0)',
+             r'(gt? 1 0)',
+             r'(lte? 0 1)',
+             r'(gte? 2 3)',
+             r'(cond (#t (+ 3 4)) (else 4))',
+             r'(cond (#f (+ 3 4)) (else 4))',
+             r'(for ((i (list 1 2 3)) (j (list 4 5 6))) (+ i j) (- i j))',
+             r'(for/list ((i (list 1 2 3)) (j (list 4 5 6))) (+ i j) (- i j))',
+             r'(delay (/ 1 0))',
+             r'(force (delay (/ 2 1)))',
+             r'(begin (define p (delay (/ 1 1))) (force p))',
+             r'(begin (define (decr count) (if (eq? count 0) (println "Done") (begin (println count) (decr (- count 1))) )) (decr 3))',
+             r'(cons-stream 2 3)',
+             r'(cdr-stream (cons-stream 2 3))']
+    for string in tests:
+        print("-------------------")
+        print(expr_to_str(frontend(string)))
+        context = {}
+        print(expr_to_str(eval_expr(frontend(string), context, False)))
