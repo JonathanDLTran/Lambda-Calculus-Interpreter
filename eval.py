@@ -28,259 +28,211 @@ from ast import (Expr,
 from functools import reduce
 
 
-# def eval_expr(expr, ctx):
-#     """
-#     evaluate expr to a value and return value and updated context,
-#     in a non-quasiquoted environment
-#     """
-#     assert isinstance(expr, Expr)
-#     assert isinstance(ctx, dict)
-#     if isinstance(expr, Constant):
-#         return expr, ctx
-#     elif type(expr) == Var:
-#         return eval_var(expr, ctx)
-#     elif type(expr) == Quote:
-#         return eval_quote(expr, ctx)
-#     elif type(expr) == Unquote:
-#         return eval_unquote(expr, ctx)
-#     elif type(expr) == Quasiquote:
-#         return eval_quasiquote(expr, ctx)
-#     elif type(expr) == If:
-#         return eval_if(expr, ctx)
-#     elif type(expr) == IfElse:
-#         return eval_ifelse(expr, ctx)
-#     elif type(expr) == Set:
-#         return eval_set(expr, ctx)
-#     elif type(expr) == Lambda:
-#         return eval_lambda(expr, ctx)
-#     elif type(expr) == Let:
-#         return eval_let(expr, ctx)
-#     elif type(expr) == App:
-#         return eval_app(expr, ctx)
+OPEN_PAREN = "("
+CLOSE_PAREN = ")"
+BRACES = [
+    OPEN_PAREN,
+    CLOSE_PAREN,
+]
+SPACE = " "
+TRUE = "#t"
+FALSE = "#f"
+ADD = "+"
+SUB = "-"
+MUL = "*"
+DIV = "/"
+EXP = "**"
+CONCAT = "^"
+PRINTLN = "println"
+SET = "set!"
+EQ = "eq?"
+QUOTE = "quote"
+UNQUOTE = "unquote"
+QUASIQUOTE = "quasiquote"
+UNQUOTE_SPLICING = "unquote-splicing"
+LIST = "list"
+IF = "if"
+LET = "let"
+LETSTAR = "let*"
+AND = "and"
+OR = "or"
+NOT = "not"
+BEGIN = "begin"
+CONS = "cons"
+CAR = "car"
+CDR = "cdr"
+DEFINE = "define"
+LAMBDA = "lambda"
+FOR = "for"
+FORLIST = "for/list"
+DEFINE_MACRO = "define-macro"
+APPLY = "apply"
+MAP = "map"
+LT = "lt?"
+GT = "gt?"
+LTE = "lte?"
+GTE = "gte?"
+NEQ = "neq?"
+COND = "cond"
+ELSE = "else"
+DELAY = "delay"
+FORCE = "force"
+CONS_STREAM = "cons-stream"
+CDR_STREAM = "cdr-stream"
+VARIADIC = "variadic"
+APPEND = "append"
+NIL = "nil"
+MATCH = "match"  # very basic match
+UNDERSCORE = "_"
 
 
-# def eval_app(expr, ctx):
-#     assert type(expr) == App
-#     fun = expr.get_fun()
-#     fun_val, ctx1 = eval_expr(fun, ctx)
-#     new_ctx = deepcopy(ctx1)
-#     args = expr.get_args()
-#     arg_vals = []
-#     for arg in args:
-#         arg_val, new_ctx = eval_expr(arg, new_ctx)
-#         arg_vals.append(arg_val)
-#     if type(fun_val) == Lambda:
-#         fun_val_names = fun_val.get_args()
-#         fun_val_body = fun_val.get_body()
-#         final_ctx = deepcopy(new_ctx)
-#         if len(fun_val_names) != len(arg_vals):
-#             raise RuntimeError(
-#                 f"Incorrect Arity: Function {fun_val} requires {len(fun_val_names)} \
-#                     arguments and {len(arg_vals)} arguments were provided.")
-#         for arg_name, arg_val in zip(fun_val_names, arg_vals):
-#             final_ctx[arg_name] = arg_val
-#         return eval_expr(fun_val_body, final_ctx)
-#     else:
-#         raise RuntimeError(
-#             f"Application must begin with function; instead {fun} was given.")
+COUNTER = 0
+GENERATED_SYMBOL = "gen_sym"
 
 
-# def eval_let(expr, ctx):
-#     assert type(expr) == Let
-#     bindings = expr.get_bindings()
-#     bodies = expr.get_bodies()
-#     new_ctx = deepcopy(ctx)
-#     for name, bind_expr in bindings:
-#         value, _ = eval_expr(bind_expr, ctx)
-#         new_ctx[name] = value
-#     for body_expr in bodies:
-#         value, new_ctx = eval_expr(body_expr, new_ctx)
-#     return value, new_ctx
+def gensym():
+    global COUNTER
+    COUNTER += 1
+    return f"__{GENERATED_SYMBOL}_{COUNTER}__"
 
 
-# def eval_var(expr, ctx):
-#     assert type(expr) == Var
-#     var = expr.get_var()
-#     if var not in ctx:
-#         raise RuntimeError(f"Unbound variable : {var} in frame : {ctx}")
-#     return ctx[var], ctx
+class String():
+    def __init__(self, s):
+        super().__init__()
+        self.string = s
+
+    def __add__(self, s):
+        return String(self.string[: -1] + s.string[1:])
+
+    def get_string(self):
+        return self.string
 
 
-# # def eval_quote(expr, ctx):
-# #     assert type(expr) == Quote
-# #     return expr.get_datum(), ctx
+class Lambda():
+    def __init__(self, args, bodies, is_variadic):
+        assert type(args) == list
+        assert len(args) >= 1
+        assert type(bodies) == list
+        assert len(bodies) >= 1
+        assert type(is_variadic) == bool
+        super().__init__()
+        self.args = args
+        self.bodies = bodies
+        self.is_variadic = is_variadic
+
+    def get_args(self):
+        return self.args
+
+    def get_bodies(self):
+        return self.bodies
+
+    def get_is_variadic(self):
+        return self.is_variadic
 
 
-# def eval_unquote(expr, ctx):
-#     assert type(expr) == Unquote
-#     raise RuntimeError(
-#         f"Unquote not nested in a quasiquote : {expr} | frame : {ctx}")
+class Delay():
+    def __init__(self, expr):
+        super().__init__()
+        self.expr = expr
+
+    def get_expr(self):
+        return self.expr
 
 
-# def eval_set(expr, ctx):
-#     assert type(expr) == Set
-#     expr_val, _ = eval_expr(expr.get_expr(), ctx)
-#     var = expr.get_var()
-#     if var not in ctx:
-#         raise RuntimeError(f"Variable {var} not bound in current frame {ctx}.")
-#     new_ctx = deepcopy(ctx)
-#     new_ctx[var] = expr_val
-#     # Undefined Return Value for a Set Expression
-#     return None, new_ctx
+class Cons():
+    def __init__(self, left, right):
+        super().__init__()
+        self.left = left
+        self.right = right
+
+    def get_left(self):
+        return self.left
+
+    def get_right(self):
+        return self.right
 
 
-# def eval_ifelse(expr, ctx):
-#     assert type(expr) == IfElse
-#     b, _ = eval_expr(expr.get_guard(), ctx)
-#     if b.get_value():
-#         return eval_expr(expr.get_fst(), ctx)
-#     else:
-#         return eval_expr(expr.get_snd(), ctx)
+class Macro():
+    def __init__(self, args, bodies):
+        assert type(args) == list
+        assert len(args) >= 1
+        assert type(bodies) == list
+        assert len(bodies) >= 1
+        super().__init__()
+        self.args = args
+        self.bodies = bodies
+
+    def replicate(self):
+        # need to process to generate random symbols
+        args = deepcopy(self.args)
+        bodies = deepcopy(self.bodies)
+        sym_map = {}
+        for arg in args:
+            sym_map[arg] = gensym()
+        self.args = [sym_map[arg] for arg in args]
+        new_bodies = []
+        for body in bodies:
+            new_body = []
+            for sym in body:
+                if sym in sym_map:
+                    new_body.append(sym_map[sym])
+                else:
+                    new_body.append(sym)
+            new_bodies.append(new_body)
+        self.bodies = new_bodies
+
+    def get_args(self):
+        return self.args
+
+    def get_bodies(self):
+        return self.bodies
 
 
-# def eval_if(expr, ctx):
-#     assert type(expr) == If
-#     b, _ = eval_expr(expr.get_guard(), ctx)
-#     if b.get_value():
-#         return eval_expr(expr.get_expr(), ctx)
-#     else:
-#         # Undefined Return Value for a 1 sided If Expression
-#         return None, ctx
+def bool_to_str(b):
+    assert type(b) == bool
+    if b:
+        return TRUE
+    return FALSE
 
 
-# def eval_lambda(expr, ctx):
-#     assert type(expr) == Lambda
-#     return expr, ctx
+def lambda_to_str(expr):
+    assert type(expr) == Lambda
+    bodies = expr.get_bodies()
+    args = expr.get_args()
+    args_str = " ".join(args)
+    bodies_strs = list(map(lambda b: expr_to_str(b), bodies))
+    bodies_combined = " ".join(bodies_strs)
+    return f'(lambda ({args_str}) {bodies_combined})'
 
 
-# def eval_quasiquote(expr, ctx):
-#     assert type(expr) == Quasiquote
-#     return qeval_expr(expr.get_expr(), ctx)
+def expr_to_str(expr):
+    if type(expr) == int:
+        return str(expr)
+    elif type(expr) == bool:
+        return bool_to_str(expr)
+    elif type(expr) == str:
+        return expr
+    elif type(expr) == String:
+        return f'{expr.get_string()}'
+    elif type(expr) == Lambda:
+        return lambda_to_str(expr)
+    elif type(expr) == Cons:
+        return f'(cons {expr_to_str(expr.get_left())} {expr_to_str(expr.get_right())})'
+    elif type(expr) == Delay:
+        return f'#[promise (unforced)]'
+    elif type(expr) == Macro:
+        raise RuntimeError(
+            f"Macro can never be an evaluated expression: {expr}")
 
+    assert type(expr) == list
+    if len(expr) == 0:
+        return NIL
 
-# def qeval_expr(expr, ctx):
-#     assert isinstance(expr, Expr)
-#     assert isinstance(ctx, dict)
-#     if isinstance(expr, Constant):
-#         return expr, ctx
-#     elif type(expr) == Var:
-#         return expr, ctx
-#     elif type(expr) == Quote:
-#         # lose all unquoting inside this nested quote
-#         return expr, ctx
-#     elif type(expr) == Unquote:
-#         return eval_expr(expr.get_expr(), ctx)
-#     elif type(expr) == Quasiquote:
-#         # lose all unuoting inside this nested quasiquote
-#         return expr, ctx
-#     elif type(expr) == If:
-#         return qeval_if(expr, ctx)
-#     elif type(expr) == IfElse:
-#         return qeval_ifelse(expr, ctx)
-#     elif type(expr) == Set:
-#         return qeval_set(expr, ctx)
-#     elif type(expr) == Lambda:
-#         return qeval_lambda(expr, ctx)
-#     elif type(expr) == Let:
-#         return qeval_let(expr, ctx)
-#     elif type(expr) == App:
-#         return qeval_app(expr, ctx)
-
-
-# def qeval_app(expr, ctx):
-#     assert type(expr) == App
-#     args = expr.get_args()
-#     fun = expr.get_fun()
-#     new_fun, ctx1 = qeval_expr(fun, ctx)
-#     new_ctx = deepcopy(ctx1)
-#     new_args = []
-#     for arg in args:
-#         new_arg, new_ctx = qeval_expr(arg, new_ctx)
-#         new_args.append(new_arg)
-#     return App(new_fun + new_args), new_ctx
-
-
-# def qeval_if(expr, ctx):
-#     assert type(expr) == If
-#     guard = expr.get_guard()
-#     body = expr.get_expr()
-#     new_guard, ctx1 = qeval_expr(guard, ctx)
-#     new_body, ctx2 = qeval_expr(body, ctx1)
-#     return If(new_guard, new_body), ctx2
-
-
-# def qeval_ifelse(expr, ctx):
-#     assert type(expr) == IfElse
-#     guard = expr.get_guard()
-#     fst = expr.get_fst()
-#     snd = expr.get_snd()
-#     new_guard, ctx1 = qeval_expr(guard, ctx)
-#     new_fst, ctx2 = qeval_expr(fst, ctx1)
-#     new_snd, ctx3 = qeval_expr(snd, ctx2)
-#     return IfElse(new_guard, new_fst, new_snd), ctx2
-
-
-# def qeval_set(expr, ctx):
-#     assert type(expr) == Set
-#     body = expr.get_expr()
-#     var = expr.get_var()
-#     new_body, ctx1 = qeval_expr(body, ctx)
-#     return Set(var, body), ctx1
-
-
-# def qeval_lambda(expr, ctx):
-#     assert type(expr) == Lambda
-#     args = expr.get_args()
-#     body = expr.get_body()
-#     new_body, ctx1 = qeval_expr(body, ctx)
-#     return Lambda(args, new_body), ctx1
-
-
-# def qeval_let(expr, ctx):
-#     assert type(expr) == Let
-#     bindings = expr.get_bindings()
-#     bodies = expr.get_bodies()
-#     names = list(map(lambda pair: pair[0], bindings))
-#     bind_exprs = list(map(lambda pair: pair[1], bindings))
-#     new_bind_exprs = []
-#     new_ctx = deepcopy(ctx)
-#     for bind_expr in bind_exprs:
-#         new_bind_expr, new_ctx = qeval_expr(bind_expr, new_ctx)
-#         new_bind_exprs.append(new_bind_expr)
-#     new_bindings = list(zip(names, bind_exprs))
-#     new_bodies = []
-#     for body in bodies:
-#         new_body, new_ctx = qeval_expr(body, new_ctx)
-#         new_bodies.append(new_body)
-#     return Let(new_bindings, new_bodies), new_ctx
-
-
-# def eval_definition(definition, ctx):
-#     assert isinstance(definition, Definition)
-#     assert type(ctx) == dict
-#     if type(definition) == Def:
-#         return eval_def(definition, ctx)
-#     elif type(definition) == Begin:
-#         exprs = definition.get_exprs()
-#         return eval_begin(definition, ctx)
-
-
-# def eval_def(definition, ctx):
-#     assert type(definition) == Def
-#     expr = definition.get_expr()
-#     val, new_ctx = eval_expr(expr, ctx)
-#     var = definition.get_var()
-#     new_ctx[var] = val
-#     return var, new_ctx
-
-
-# def eval_begin(definition, ctx):
-#     assert type(definition) == Begin
-#     exprs = definition.get_exprs()
-#     new_ctx = deepcopy(ctx)
-#     for expr in exprs:
-#         val, new_ctx = eval_expr(expr, new_ctx)
-#     return val, new_ctx
+    output_lst = []
+    for e in expr:
+        output_lst.append(expr_to_str(e))
+    output = f"({' '.join(output_lst)})"
+    return output
 
 
 def eval_expr(expr, ctx, in_quasi):
@@ -389,6 +341,8 @@ def eval_expr(expr, ctx, in_quasi):
         return eval_cdrstream(expr, ctx, in_quasi)
     elif first == APPEND:
         return eval_append(expr, ctx, in_quasi)
+    elif first == MATCH:
+        return eval_match(expr, ctx, in_quasi)
     # match on a macro
     elif type(first) != list and first in ctx and type(ctx[first]) == Macro:
         return eval_macro(expr, ctx, in_quasi)
@@ -1034,6 +988,82 @@ def eval_append(expr, ctx, in_quasi):
     return final_lst
 
 
+def match_pattern(value, pattern, ctx, in_quasi):
+    """
+    returns True when pattern matches else False,
+    and also does side effects like updating context when pattern matches
+    but does not evaluate body
+    """
+    if type(pattern) != list:
+        if pattern == UNDERSCORE:
+            # match all, no bindings updated
+            return True
+        if pattern == NIL:
+            return value == []
+        # pattern is a string --> understood to be a variable
+        if type(pattern) == str:
+            # update binding
+            ctx[pattern] = value
+            return True
+        # pattern must be a literal
+        return pattern == value
+    assert type(pattern) == list
+    assert len(pattern) >= 2
+    head = pattern[0]
+    if head == QUOTE:
+        assert len(pattern) == 2
+        datum = pattern[0]
+        return datum == value
+    elif head == LIST:
+        assert len(pattern) >= 2
+        binders = pattern[1:]
+        for var in binders:
+            assert type(var) == str
+        if type(value) == list:
+            if len(value) != len(binders):
+                return False
+            for var, val in zip(binders, value):
+                ctx[var] = val
+            return True
+        return False
+    elif head == CONS:
+        assert len(pattern) >= 3
+        left = pattern[1]
+        right = pattern[2]
+        assert type(left) == str
+        assert type(right) == str
+        if type(value) == Cons:
+            lval = value.get_left()
+            rval = value.get_right()
+            ctx[left] = lval
+            ctx[right] = rval
+            return True
+        return False
+
+
+def eval_match(expr, ctx, in_quasi):
+    assert type(expr) == list
+    assert len(expr) >= 3
+    assert expr[0] == MATCH
+    if in_quasi:
+        return handle_quasi(expr, ctx, in_quasi)
+    val_expr = expr[1]
+    clauses = expr[2:]
+    val = eval_expr(val_expr, ctx, in_quasi)
+    # can add more patterns as one desires
+    for clause in clauses:
+        assert type(clause) == list
+        assert len(clause) >= 2
+        pattern = clause[0]
+        bodies = clause[1:]
+        final_bodies = [BEGIN] + bodies
+        match = match_pattern(val, pattern, ctx, in_quasi)
+        if match:
+            return eval_expr(final_bodies, ctx, in_quasi)
+    # no match , return any value, say 0
+    return 0
+
+
 def handle_quasi(expr, ctx, in_quasi):
     assert type(expr) == list
     assert len(expr) > 1
@@ -1049,209 +1079,6 @@ def handle_quasi(expr, ctx, in_quasi):
         else:
             remainder.append(v)
     return remainder
-
-
-OPEN_PAREN = "("
-CLOSE_PAREN = ")"
-# OPEN_BRACKET = "["
-# CLOSE_BRACKET = "]"
-BRACES = [
-    OPEN_PAREN,
-    CLOSE_PAREN,
-
-
-]
-SPACE = " "
-TRUE = "#t"
-FALSE = "#f"
-ADD = "+"
-SUB = "-"
-MUL = "*"
-DIV = "/"
-EXP = "**"
-CONCAT = "^"
-PRINTLN = "println"
-SET = "set!"
-EQ = "eq?"
-QUOTE = "quote"
-UNQUOTE = "unquote"
-QUASIQUOTE = "quasiquote"
-UNQUOTE_SPLICING = "unquote-splicing"
-LIST = "list"
-IF = "if"
-LET = "let"
-LETSTAR = "let*"
-AND = "and"
-OR = "or"
-NOT = "not"
-BEGIN = "begin"
-CONS = "cons"
-CAR = "car"
-CDR = "cdr"
-DEFINE = "define"
-LAMBDA = "lambda"
-FOR = "for"
-FORLIST = "for/list"
-DEFINE_MACRO = "define-macro"
-APPLY = "apply"
-MAP = "map"
-LT = "lt?"
-GT = "gt?"
-LTE = "lte?"
-GTE = "gte?"
-NEQ = "neq?"
-COND = "cond"
-ELSE = "else"
-DELAY = "delay"
-FORCE = "force"
-CONS_STREAM = "cons-stream"
-CDR_STREAM = "cdr-stream"
-VARIADIC = "variadic"
-APPEND = "append"
-NIL = "nil"
-
-COUNTER = 0
-GENERATED_SYMBOL = "gen_sym"
-
-
-def gensym():
-    global COUNTER
-    COUNTER += 1
-    return f"__{GENERATED_SYMBOL}_{COUNTER}__"
-
-
-class String():
-    def __init__(self, s):
-        super().__init__()
-        self.string = s
-
-    def __add__(self, s):
-        return String(self.string[: -1] + s.string[1:])
-
-    def get_string(self):
-        return self.string
-
-
-class Lambda():
-    def __init__(self, args, bodies, is_variadic):
-        assert type(args) == list
-        assert len(args) >= 1
-        assert type(bodies) == list
-        assert len(bodies) >= 1
-        assert type(is_variadic) == bool
-        super().__init__()
-        self.args = args
-        self.bodies = bodies
-        self.is_variadic = is_variadic
-
-    def get_args(self):
-        return self.args
-
-    def get_bodies(self):
-        return self.bodies
-
-    def get_is_variadic(self):
-        return self.is_variadic
-
-
-class Delay():
-    def __init__(self, expr):
-        super().__init__()
-        self.expr = expr
-
-    def get_expr(self):
-        return self.expr
-
-
-class Cons():
-    def __init__(self, left, right):
-        super().__init__()
-        self.left = left
-        self.right = right
-
-    def get_left(self):
-        return self.left
-
-    def get_right(self):
-        return self.right
-
-
-class Macro():
-    def __init__(self, args, bodies):
-        assert type(args) == list
-        assert len(args) >= 1
-        assert type(bodies) == list
-        assert len(bodies) >= 1
-        super().__init__()
-        self.args = args
-        self.bodies = bodies
-
-    def replicate(self):
-        # need to process to generate random symbols
-        args = deepcopy(self.args)
-        bodies = deepcopy(self.bodies)
-        sym_map = {}
-        for arg in args:
-            sym_map[arg] = gensym()
-        self.args = [sym_map[arg] for arg in args]
-        new_bodies = []
-        for body in bodies:
-            new_body = []
-            for sym in body:
-                if sym in sym_map:
-                    new_body.append(sym_map[sym])
-                else:
-                    new_body.append(sym)
-            new_bodies.append(new_body)
-        self.bodies = new_bodies
-
-    def get_args(self):
-        return self.args
-
-    def get_bodies(self):
-        return self.bodies
-
-
-def bool_to_str(b):
-    assert type(b) == bool
-    if b:
-        return TRUE
-    return FALSE
-
-
-def expr_to_str(expr):
-    if type(expr) == int:
-        return str(expr)
-    elif type(expr) == bool:
-        return bool_to_str(expr)
-    elif type(expr) == str:
-        return expr
-    elif type(expr) == String:
-        return f'{expr.get_string()}'
-    elif type(expr) == Lambda:
-        bodies = expr.get_bodies()
-        args = expr.get_args()
-        args_str = " ".join(args)
-        bodies_strs = list(map(lambda b: expr_to_str(b), bodies))
-        bodies_combined = " ".join(bodies_strs)
-        return f'(lambda ({args_str}) {bodies_combined})'
-    elif type(expr) == Cons:
-        return f'(cons {expr_to_str(expr.get_left())} {expr_to_str(expr.get_right())})'
-    elif type(expr) == Delay:
-        return f'#[promise (unforced)]'
-    elif type(expr) == Macro:
-        raise RuntimeError(
-            f"Macro can never be an evaluated expression: {expr}")
-
-    assert type(expr) == list
-    if len(expr) == 0:
-        return NIL
-
-    output_lst = []
-    for e in expr:
-        output_lst.append(expr_to_str(e))
-    output = f"({' '.join(output_lst)})"
-    return output
 
 
 def lex(string):
@@ -1298,8 +1125,13 @@ def parse(tokens):
             raise RuntimeError(f"Scheme does not recognize token {token}.")
 
     # is a list form
+    # empty list form
+    if len(tokens) == 2:
+        if tokens == [OPEN_PAREN, CLOSE_PAREN]:
+            return NIL
     if len(tokens) < 2:
-        raise RuntimeError(f"Scheme Requires At Least 2 Tokens: {tokens}")
+        raise RuntimeError(
+            f"Scheme Requires At Least 2 Tokens if not Empty List: {tokens}")
     if tokens[0] != OPEN_PAREN:
         raise RuntimeError(
             f"Scheme Requires Expression Begin with Open Parentheses: {tokens}")
@@ -1410,7 +1242,14 @@ if __name__ == "__main__":
              r'(begin (define (f x (variadic y)) (append y (list x))) (f 1 2 3))',
              r'(begin (define f (lambda (x (variadic y)) (append y (list x)))) (f 1 2 3))',
              r'(define p (delay (begin (print "hi") (/ 1 0))))',
-             r'nil']
+             r'nil',
+             r'()',
+             r'(match 3 (_ (+ 2 3) (- 0 4)) (_ (+ 2 4) (- 5 6)))',
+             r'(begin (match 3 (i (+ 2 i))))',
+             r'(begin (match 3 (3 (+ 2 4))))',
+             r'(match nil (nil (+ 2 4)))',
+             r'(match (cons 2 3) ((cons i j) (+ i j)))',
+             r'(match (list 2 3 (+ 4 5)) ((list i j k) (+ i j k)))']
     for string in tests:
         print("-------------------")
         print(expr_to_str(frontend(string)))
