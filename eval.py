@@ -988,11 +988,15 @@ def eval_append(expr, ctx, in_quasi):
     return final_lst
 
 
-def match_pattern(value, pattern, ctx, in_quasi):
+def match_pattern(value, pattern, ctx, in_quasi, add_bindings):
     """
     returns True when pattern matches else False,
-    and also does side effects like updating context when pattern matches
-    but does not evaluate body
+    When add_bindings is true, does side effects like updating context when 
+    pattern matches but does not evaluate body. Otherwise, when add_bindings
+    is false, no side effects on context.
+    Never has side effects on in_quasi
+
+    Recursive descends through pattern and value to create strongest matching.
     """
     if type(pattern) != list:
         if pattern == UNDERSCORE:
@@ -1003,12 +1007,15 @@ def match_pattern(value, pattern, ctx, in_quasi):
         # pattern is a string --> understood to be a variable
         if type(pattern) == str:
             # update binding
-            ctx[pattern] = value
+            if add_bindings:
+                ctx[pattern] = value
             return True
         # pattern must be a literal
         return pattern == value
+
     assert type(pattern) == list
     assert len(pattern) >= 2
+
     head = pattern[0]
     if head == QUOTE:
         assert len(pattern) == 2
@@ -1017,26 +1024,30 @@ def match_pattern(value, pattern, ctx, in_quasi):
     elif head == LIST:
         assert len(pattern) >= 2
         binders = pattern[1:]
-        for var in binders:
-            assert type(var) == str
         if type(value) == list:
             if len(value) != len(binders):
                 return False
             for var, val in zip(binders, value):
-                ctx[var] = val
+                result = match_pattern(val, var, ctx, in_quasi, add_bindings)
+                if not result:
+                    return False
             return True
         return False
     elif head == CONS:
         assert len(pattern) >= 3
         left = pattern[1]
         right = pattern[2]
-        assert type(left) == str
-        assert type(right) == str
         if type(value) == Cons:
             lval = value.get_left()
+            lresult = match_pattern(lval, left, ctx, in_quasi, add_bindings)
+            if not lresult:
+                return False
+
             rval = value.get_right()
-            ctx[left] = lval
-            ctx[right] = rval
+            rresult = match_pattern(rval, right, ctx, in_quasi, add_bindings)
+            if not rresult:
+                return False
+
             return True
         return False
 
@@ -1057,8 +1068,11 @@ def eval_match(expr, ctx, in_quasi):
         pattern = clause[0]
         bodies = clause[1:]
         final_bodies = [BEGIN] + bodies
-        match = match_pattern(val, pattern, ctx, in_quasi)
+        # no side effect match
+        match = match_pattern(val, pattern, ctx, in_quasi, False)
         if match:
+            # binding and have side effects for context
+            match_pattern(val, pattern, ctx, in_quasi, True)
             return eval_expr(final_bodies, ctx, in_quasi)
     # no match , return any value, say 0
     return 0
@@ -1249,7 +1263,14 @@ if __name__ == "__main__":
              r'(begin (match 3 (3 (+ 2 4))))',
              r'(match nil (nil (+ 2 4)))',
              r'(match (cons 2 3) ((cons i j) (+ i j)))',
-             r'(match (list 2 3 (+ 4 5)) ((list i j k) (+ i j k)))']
+             r'(match (list 2 3 (+ 4 5)) ((list i j k) (+ i j k)))',
+             r'(match (list 2 3 (list 6 7)) ((list i j k) (+ i j) k))',
+             r'(match (list 2 3 (list 6 7)) ((list i j (list k l)) (+ i j k l)))',
+             r'(match (list 1 (list 2 3) (list 4 5) (list 6 7)) ((list (list a b) (list c d) (list k l)) (+ a b c d k l)))',
+             r'(match (list 1 (list 2 3) (list 4 5) (list 6 7)) ((list x (list a b) (list c d) (list k l)) (+ x a b c d k l)))',
+             r'(match (cons (cons 3 (cons 3 6)) 3) ((cons (cons a (cons b c)) d) (+ a b c d)))',
+             r'(match (cons (cons 3 (cons 3 6)) (list 2 3)) ((cons (cons a (cons b c)) d) (+ a b c) d))',
+             r'(match (cons (cons 3 (cons 3 6)) (list 3 3)) ((cons (cons a (cons b c)) (list d e)) (+ a b c d e)))']
     for string in tests:
         print("-------------------")
         print(expr_to_str(frontend(string)))
