@@ -288,6 +288,8 @@ def eval_expr(expr, ctx, in_quasi):
         return expr
     elif type(expr) == bool:
         return expr
+    elif expr == NIL:
+        return []
     elif type(expr) == str:
         if expr in ctx:
             return ctx[expr]
@@ -1106,6 +1108,7 @@ CONS_STREAM = "cons-stream"
 CDR_STREAM = "cdr-stream"
 VARIADIC = "variadic"
 APPEND = "append"
+NIL = "nil"
 
 COUNTER = 0
 GENERATED_SYMBOL = "gen_sym"
@@ -1241,6 +1244,9 @@ def expr_to_str(expr):
             f"Macro can never be an evaluated expression: {expr}")
 
     assert type(expr) == list
+    if len(expr) == 0:
+        return NIL
+
     output_lst = []
     for e in expr:
         output_lst.append(expr_to_str(e))
@@ -1400,7 +1406,11 @@ if __name__ == "__main__":
              r'(begin (define my-list (lambda ((variadic x)) x)) (my-list 2 3 4))',
              r'(list (quote (1 2)) (quote (3 4)))',
              r'(append (quote (1 2)) (quote (3 4)))',
-             r'(append (quote ((1 2) (3 4))) (quote ((5 6) (7 8))))']
+             r'(append (quote ((1 2) (3 4))) (quote ((5 6) (7 8))))',
+             r'(begin (define (f x (variadic y)) (append y (list x))) (f 1 2 3))',
+             r'(begin (define f (lambda (x (variadic y)) (append y (list x)))) (f 1 2 3))',
+             r'(define p (delay (begin (print "hi") (/ 1 0))))',
+             r'nil']
     for string in tests:
         print("-------------------")
         print(expr_to_str(frontend(string)))
