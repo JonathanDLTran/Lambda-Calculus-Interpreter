@@ -351,6 +351,13 @@ def eval_expr(expr, ctx, in_quasi):
         return eval_cdr(expr, ctx, in_quasi)
     elif first == CONS:
         return eval_cons(expr, ctx, in_quasi)
+    elif first == APPLY:
+        return eval_apply(expr, ctx, in_quasi)
+    elif first == MAP:
+        return eval_map(expr, ctx, in_quasi)
+    # match on a macro
+    elif first in ctx and type(ctx[first]) == Macro:
+        pass
     # return forms that are quasiquoted, comes before application
     elif in_quasi:
         return expr
@@ -692,6 +699,48 @@ def eval_cdr(expr, ctx, in_quasi):
     return c.get_right()
 
 
+def eval_apply(expr, ctx, in_quasi):
+    assert type(expr) == list
+    assert len(expr) >= 3
+    assert expr[0] == APPLY
+    if in_quasi:
+        return handle_quasi(expr, ctx, in_quasi)
+    function = expr[1]
+    lst = []
+    for a in expr[2:-1]:
+        lst.append(a)
+    # last arg must be a list
+    lst += eval_expr(expr[-1], ctx, in_quasi)
+    new_expr = [function] + lst
+    return eval_expr(new_expr, ctx, in_quasi)
+
+
+def eval_map(expr, ctx, in_quasi):
+    assert type(expr) == list
+    assert len(expr) >= 3
+    assert expr[0] == MAP
+    if in_quasi:
+        return handle_quasi(expr, ctx, in_quasi)
+    function = expr[1]
+    lists = []
+    for lst in expr[2:]:
+        val = eval_expr(lst, ctx, in_quasi)
+        assert type(val) == list
+        lists.append(val)
+    # last arg must be a list
+    assert len(lists) > 0
+    l = len(lists[0])
+    for lst in lists:
+        assert len(lst) == l
+    tupled_lists = list(zip(*lists))
+    to_eval_lists = []
+    for tup in tupled_lists:
+        to_eval_lists.append([function] + list(tup))
+    final_list = list(map(lambda lst: eval_expr(
+        lst, ctx, in_quasi), to_eval_lists))
+    return final_list
+
+
 def handle_quasi(expr, ctx, in_quasi):
     assert type(expr) == list
     assert len(expr) > 1
@@ -716,6 +765,8 @@ CLOSE_PAREN = ")"
 BRACES = [
     OPEN_PAREN,
     CLOSE_PAREN,
+
+
 ]
 SPACE = " "
 TRUE = "#t"
@@ -746,6 +797,11 @@ CAR = "car"
 CDR = "cdr"
 DEFINE = "define"
 LAMBDA = "lambda"
+FOR = "for"
+FORLIST = "for/list"
+DEFINE_MACRO = "define-macro"
+APPLY = "apply"
+MAP = "map"
 
 
 class String():
@@ -754,7 +810,7 @@ class String():
         self.string = s
 
     def __add__(self, s):
-        return String(self.string[:-1] + s.string[1:])
+        return String(self.string[: -1] + s.string[1:])
 
     def get_string(self):
         return self.string
@@ -788,6 +844,10 @@ class Cons():
 
     def get_right(self):
         return self.right
+
+
+class Macro():
+    pass
 
 
 def bool_to_str(b):
@@ -952,6 +1012,8 @@ if __name__ == "__main__":
     string = r'(cons 2 3)'
     string = r'(car (cons 2 3))'
     string = r'(cdr (cons 2 3))'
+    string = r'(apply + 2 1 4 (quote (1 2)))'
+    string = r'(map * (quote (1 2 3)) (quote (1 2 3)) (quote (1 2 3)))'
     print(expr_to_str(frontend(string)))
     context = {}
     print(expr_to_str(eval_expr(frontend(string), context, False)))
