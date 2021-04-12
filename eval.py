@@ -15,16 +15,6 @@ https://www.scheme.com/tspl4/grammar.html
 
 from copy import deepcopy
 
-from ast import (Expr,
-                 Var,
-                 Constant, Boolean, Integer, String,
-                 Quote, Unquote, Quasiquote,
-                 If, IfElse,
-                 Set,
-                 Lambda, App, Let,
-                 Definition,
-                 Begin, Def)
-
 from functools import reduce
 
 
@@ -35,6 +25,11 @@ BRACES = [
     CLOSE_PAREN,
 ]
 QUOTATION_MARK = '\"'
+TICK = "'"
+BACKTICK = "`"
+AT = "@"
+COMMA = ","
+
 SPACE = " "
 TRUE = "#t"
 FALSE = "#f"
@@ -85,6 +80,13 @@ APPEND = "append"
 NIL = "nil"
 MATCH = "match"  # very basic match
 UNDERSCORE = "_"
+
+PREPARSE_SYMBOLS_MAP = {
+    TICK: QUOTE,
+    BACKTICK: QUASIQUOTE,
+    AT: UNQUOTE_SPLICING,
+    COMMA: UNQUOTE
+}
 
 
 COUNTER = 0
@@ -228,6 +230,21 @@ def expr_to_str(expr):
     assert type(expr) == list
     if len(expr) == 0:
         return NIL
+
+    # special forms:
+    head = expr[0]
+    if head == QUOTE:
+        assert len(expr) == 2
+        return f"{TICK}{expr_to_str(expr[1])}"
+    elif head == QUASIQUOTE:
+        assert len(expr) == 2
+        return f"{BACKTICK}{expr_to_str(expr[1])}"
+    elif head == UNQUOTE:
+        assert len(expr) == 2
+        return f"{COMMA}{expr_to_str(expr[1])}"
+    elif head == UNQUOTE_SPLICING:
+        assert len(expr) == 2
+        return f"{AT}{expr_to_str(expr[1])}"
 
     output_lst = []
     for e in expr:
@@ -496,6 +513,8 @@ def eval_quote(expr, ctx, in_quasi):
     # does not matter if it is in quasi or not
     assert len(expr) == 2
     assert expr[0] == QUOTE
+    if in_quasi:
+        return handle_quasi(expr, ctx, in_quasi)
     # no eval
     return expr[1]
 
@@ -1140,7 +1159,11 @@ def split_tokens(string):
 def lex(string):
     str1 = string.replace(OPEN_PAREN, f"{OPEN_PAREN}{SPACE}")
     str2 = str1.replace(CLOSE_PAREN, f"{SPACE}{CLOSE_PAREN}")
-    tokens = split_tokens(str2)
+    str3 = str2.replace(COMMA, f"{SPACE}{COMMA}{SPACE}")
+    str4 = str3.replace(AT, f"{SPACE}{AT}{SPACE}")
+    str5 = str4.replace(TICK, f"{SPACE}{TICK}{SPACE}")
+    str6 = str5.replace(BACKTICK, f"{SPACE}{BACKTICK}{SPACE}")
+    tokens = split_tokens(str6)
     new_tokens = []
     for token in tokens:
         if token == TRUE:
@@ -1155,6 +1178,64 @@ def lex(string):
             new_tokens.append(token)
 
     return new_tokens
+
+
+def preparse(tokens):
+    """
+    preparse adds in parsing for tick, backtick, add, comma
+    """
+    assert type(tokens) == list
+    assert len(tokens) > 0
+
+    l = len(tokens)
+    i = 0
+    while i < l:
+
+        stack = []
+        token = tokens[i]
+        if token in PREPARSE_SYMBOLS_MAP:
+            replacement_symbol = PREPARSE_SYMBOLS_MAP[token]
+            next_idx = i + 1
+            if next_idx >= l:
+                raise RuntimeError(f"No More Tokens: Ended on Tick {tokens}.")
+            while tokens[next_idx] in PREPARSE_SYMBOLS_MAP:
+                next_idx += 1
+                if next_idx >= l:
+                    raise RuntimeError(
+                        f"No More Tokens: Ended on Tick {tokens}.")
+            _next = tokens[next_idx]
+
+            if _next == OPEN_PAREN:
+                remainder = tokens[next_idx:]
+                stop_idx = None
+                for idx, tok in enumerate(remainder, next_idx):
+                    if tok == OPEN_PAREN:
+                        stack.append(tok)
+                    elif tok == CLOSE_PAREN:
+                        if stack == []:
+                            raise RuntimeError(
+                                f"Too Many Closing Parentheses: {tokens}.")
+                        stack.pop()
+                        if stack == []:
+                            stop_idx = idx
+                            break
+
+                tokens = tokens[0:i] + \
+                    [OPEN_PAREN, replacement_symbol] + \
+                    tokens[i + 1:next_idx] + \
+                    tokens[next_idx:stop_idx + 1] + \
+                    [CLOSE_PAREN] + tokens[stop_idx+1:]
+            else:
+                tokens = tokens[0:i] + \
+                    [OPEN_PAREN, replacement_symbol] + \
+                    tokens[i + 1:next_idx] + \
+                    [tokens[next_idx], CLOSE_PAREN] + \
+                    tokens[next_idx + 1:]
+
+        i += 1
+        l = len(tokens)
+
+    return tokens
 
 
 def parse(tokens):
@@ -1231,7 +1312,7 @@ def parse(tokens):
 
 
 def frontend(string):
-    return parse(lex(string))
+    return parse(preparse(lex(string)))
 
 
 if __name__ == "__main__":
@@ -1315,7 +1396,28 @@ if __name__ == "__main__":
              r'(match (cons (cons 3 (cons 3 6)) (list 3 3)) ((cons (cons a (cons b c)) (list d e)) (+ a b c d e)))',
              r'""',
              r'"hello world"',
-             r'(^ (^ "hello" " ") "world")']
+             r'(^ (^ "hello" " ") "world")',
+             r'(quote (quote 3))',
+             r'(quote (quote (quote (4 (quote 3)))))',
+             r'(quasiquote (quasiquote 3))',
+             r"'hello",
+             r"'3",
+             r"'#t",
+             r"'(+ 3 2)",
+             r"'(+ 3 '(+ 4 3))",
+             r"'(+ '(+ 4 3) 3)",
+             r"`3",
+             r"''3",
+             r"`3",
+             r"`'3",
+             r"``(+ 3 '2)",
+             r"`(+ 3 ,(+ 2 3))",
+             r"`(+ ,(- 2 3) ,(+ 2 3) ,1)",
+             r"`,`(+ ,(- 2 3) ,(+ 2 3) ,1)",
+             r"(+ `3 '3)",
+             r"`(+ 3 @(list 3 (+ 2 3)))",
+             r"'(+ 3 @(list 3 (+ 2 3)))",
+             r"`(+ 3 @(list 3 '(+ 2 3)))"]
     for string in tests:
         print("-------------------")
         print(expr_to_str(frontend(string)))
