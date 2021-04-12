@@ -5,4 +5,8 @@ There is a Scheme/Racket interpreter in these files. Some of the operations may 
 
 Note that virtually everything in the Scheme/Racket interpreter is represented as a list in Python.
 
+Most of the obvious features for Scheme has been added like, '  @ and , for quoting forms.
+
 I have also added a few extra forms as "native" forms to the interpreter, like map. Note that these could be defined as macros, because define-macro is itself a form implemented in the interpreter. However, I implemented define-macro most recently, so it was nicer to test with some externs already preloaded, like map. 
+
+The next step will be to udnerstand continuations, especially call/cc, do some translations to continuation passing form, and add in call/cc. This next step will likely not occur in the nearby future; hopefully it can be done soon. 
