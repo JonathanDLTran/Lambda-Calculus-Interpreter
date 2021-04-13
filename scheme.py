@@ -1,39 +1,71 @@
-from ast import (Expr,
-                 Var,
-                 Constant, Boolean, Integer, String,
-                 Quote, Unquote, Quasiquote,
-                 If, IfElse,
-                 Set,
-                 Lambda, App, Let,
-                 Begin, Def)
-from eval import eval_expr, eval_definition
-import lexer
-import parser
+
+from eval import eval_expr, frontend, expr_to_str
+
+
+import sys
+import os.path
+
+
+def file_evaluator(file_name):
+    fp = open(file_name, "r")
+    s = fp.read()
+    fp.close()
+
+    context = {}
+    try:
+        eval_expr(frontend(s), context, False)
+    except:
+        print("Error")
+        exit(1)
+    exit(0)
+
+
+def interpreter():
+    context = {}
+    try:
+        while(True):
+            expr_string = input("> ")
+            expr_string = expr_string.strip()
+            if expr_string.lower() == "quit":
+                print("\tExiting Interpreter...")
+                return
+            elif expr_string.lower() == "reset-context":
+                print("\tResetting Interpreter Context...")
+                print("\n")
+                context = {}
+                continue
+            try:
+                value = expr_to_str(
+                    eval_expr(frontend(expr_string), context, False))
+                print(value)
+                print("\n")
+            except:
+                print("Error")
+                print("\n")
+    except KeyboardInterrupt:
+        print("\tExiting Interpreter...")
+        return
 
 
 def main():
-    # expr = IfElse(Boolean(False), Integer(3), Integer(4))
-    # expr = Lambda(["x"], Let([('x', Integer(3))], [Integer(3)]))
-    # expr = Let([("x", Integer(3))], [Var("x")])
-    # expr = Quasiquote(
-    #     IfElse(Boolean(False), Set("x", Integer(1)), Integer(-1)))
-    # expr = Quasiquote(Lambda(["x"], Unquote(Integer(3))))
-    # expr = Quasiquote(Let([("x", Integer(3))], [Var("x")]))
-    # expr = Quasiquote(Quasiquote(
-    #     Unquote(IfElse(Boolean(False), Integer(3), Integer(4)))))
-    # expr = Quasiquote(Quote(
-    #     Unquote(IfElse(Boolean(False), Integer(3), Integer(4)))))
-    # expr = Quote("a")
-    # expr = App([Lambda(["x"], Var("x")), Integer(1)])
-    # expr = Quasiquote(Unquote(App([Lambda(["x"], Var("x")), Integer(1)])))
-    # expr = Quasiquote(Quasiquote(App([Lambda(["x"], Var("x")), Integer(1)])))
-    # definition = Begin([App([Lambda(["x"], Var("x")), Integer(1)]), Quasiquote(
-    #     Unquote(App([Lambda(["x"], Var("x")), Integer(1)])))])
-    definition = Begin([Let([("x", Integer(10))], [Var("x")]), Var("x")])
-    ctx = {}
-    result, _ = eval_definition(definition, ctx)
-    print(result)
-    return result
+    args = sys.argv[1:]
+    if args == []:
+        print("\t----- Scheme Interpreter -----")
+        interpreter()
+        exit(0)
+    elif args[0] == "--help":
+        print("\tUsage: python3 scheme.py [file.scm]")
+        exit(0)
+    elif len(args) == 1:
+        file_name = args[0]
+        if not os.path.exists(file_name):
+            print(f"\tNo Path to File {file_name}.")
+            exit(0)
+        file_evaluator(file_name)
+        exit(0)
+    else:
+        print(f"\tToo Many Arguments: {args}")
+        exit(0)
 
 
 if __name__ == "__main__":
