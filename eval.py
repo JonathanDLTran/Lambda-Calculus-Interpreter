@@ -20,6 +20,8 @@ from functools import reduce
 
 OPEN_PAREN = "("
 CLOSE_PAREN = ")"
+OPEN_BRACKET = "["
+CLOSE_BRACKET = "]"
 BRACES = [
     OPEN_PAREN,
     CLOSE_PAREN,
@@ -29,6 +31,10 @@ TICK = "'"
 BACKTICK = "`"
 AT = "@"
 COMMA = ","
+
+INFIX_MARKER = "$"
+
+DOT = "."
 
 COMMENT = ";"
 NEWLINE = "\n"
@@ -1187,7 +1193,9 @@ def split_tokens(string):
 
 def lex(string):
     no_comments_str = remove_comments(string)
-    str1 = no_comments_str.replace(OPEN_PAREN, f"{OPEN_PAREN}{SPACE}")
+    no_open_brackets = no_comments_str.replace(OPEN_BRACKET, OPEN_PAREN)
+    no_close_brackets = no_open_brackets.replace(CLOSE_BRACKET, CLOSE_PAREN)
+    str1 = no_close_brackets.replace(OPEN_PAREN, f"{OPEN_PAREN}{SPACE}")
     str2 = str1.replace(CLOSE_PAREN, f"{SPACE}{CLOSE_PAREN}")
     str3 = str2.replace(COMMA, f"{SPACE}{COMMA}{SPACE}")
     str4 = str3.replace(AT, f"{SPACE}{AT}{SPACE}")
@@ -1341,6 +1349,25 @@ def parse(tokens):
     return stack.pop()
 
 
+def dot_reader(parsed):
+    pass
+
+
+def reorder_infix(parsed):
+    pass
+
+
+def postparse(parsed):
+    """
+    postparse expands out correctly any specified infix operators
+    and also expands out infix dot notation for pairs, which significantly
+    differs from the actual scheme implementation because I disagree
+    with the fact that dot notation can generally not be read in to the 
+    scheme reader.
+    """
+    pass
+
+
 def frontend(string):
     return parse(preparse(lex(string)))
 
@@ -1449,6 +1476,7 @@ if __name__ == "__main__":
              r"'(+ 3 @(list 3 (+ 2 3)))",
              r"`(+ 3 @(list 3 '(+ 2 3)))",
              r"(println (+ 2 3) (+ 3 4) (- 0 3) (+ 9 9))",
+             r"(+ [+ 2 3] 4)",
              ";hello this is a comment\n (+ 2 3);2 3\n;2 3"]
     for string in tests:
         print("-------------------")
