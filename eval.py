@@ -30,6 +30,11 @@ BACKTICK = "`"
 AT = "@"
 COMMA = ","
 
+COMMENT = ";"
+NEWLINE = "\n"
+CARRIAGE_RETURN = "\r\n"
+NEWLINE_CHARS = "\r\n"
+
 SPACE = " "
 TRUE = "#t"
 FALSE = "#f"
@@ -500,6 +505,7 @@ def eval_gte(expr, ctx, in_quasi):
 
 
 def eval_neq(expr, ctx, in_quasi):
+    assert type(expr) == list
     assert len(expr) == 3
     assert expr[0] == NEQ
     if in_quasi:
@@ -511,6 +517,7 @@ def eval_neq(expr, ctx, in_quasi):
 
 def eval_quote(expr, ctx, in_quasi):
     # does not matter if it is in quasi or not
+    assert type(expr) == list
     assert len(expr) == 2
     assert expr[0] == QUOTE
     if in_quasi:
@@ -520,12 +527,15 @@ def eval_quote(expr, ctx, in_quasi):
 
 
 def eval_println(expr, ctx, in_quasi):
-    assert len(expr) == 2
+    assert type(expr) == list
+    assert len(expr) >= 2
     assert expr[0] == PRINTLN
     if in_quasi:
         return handle_quasi(expr, ctx, in_quasi)
-    val = eval_expr(expr[1], ctx, in_quasi)
-    print(expr_to_str(val))
+    # make println variadic in nature
+    vals = list(map(lambda e: eval_expr(e, ctx, in_quasi), expr[1:]))
+    strings = list(map(lambda v: expr_to_str(v), vals))
+    print(" ".join(strings))
     # return an int
     return 0
 
@@ -1115,6 +1125,25 @@ def handle_quasi(expr, ctx, in_quasi):
     return remainder
 
 
+def remove_comments(string):
+    """
+    takes a raw string, and any line with a comment
+    has the comment removed to the end of the line
+    """
+    new_string = ""
+    in_comment = False
+    for c in string:
+        if c == COMMENT and not in_comment:
+            in_comment = True
+        elif c in NEWLINE_CHARS and in_comment:
+            in_comment = False
+        elif in_comment:
+            continue
+        else:
+            new_string += c
+    return new_string
+
+
 def split_tokens(string):
     """
     Does not supported nested string data
@@ -1157,7 +1186,8 @@ def split_tokens(string):
 
 
 def lex(string):
-    str1 = string.replace(OPEN_PAREN, f"{OPEN_PAREN}{SPACE}")
+    no_comments_str = remove_comments(string)
+    str1 = no_comments_str.replace(OPEN_PAREN, f"{OPEN_PAREN}{SPACE}")
     str2 = str1.replace(CLOSE_PAREN, f"{SPACE}{CLOSE_PAREN}")
     str3 = str2.replace(COMMA, f"{SPACE}{COMMA}{SPACE}")
     str4 = str3.replace(AT, f"{SPACE}{AT}{SPACE}")
@@ -1417,7 +1447,9 @@ if __name__ == "__main__":
              r"(+ `3 '3)",
              r"`(+ 3 @(list 3 (+ 2 3)))",
              r"'(+ 3 @(list 3 (+ 2 3)))",
-             r"`(+ 3 @(list 3 '(+ 2 3)))"]
+             r"`(+ 3 @(list 3 '(+ 2 3)))",
+             r"(println (+ 2 3) (+ 3 4) (- 0 3) (+ 9 9))",
+             ";hello this is a comment\n (+ 2 3);2 3\n;2 3"]
     for string in tests:
         print("-------------------")
         print(expr_to_str(frontend(string)))
