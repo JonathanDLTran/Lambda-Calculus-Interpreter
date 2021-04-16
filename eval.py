@@ -17,6 +17,8 @@ from copy import deepcopy
 
 from functools import reduce
 
+PRINT_CONS = False
+
 
 OPEN_PAREN = "("
 CLOSE_PAREN = ")"
@@ -231,7 +233,10 @@ def expr_to_str(expr):
     elif type(expr) == Lambda:
         return lambda_to_str(expr)
     elif type(expr) == Cons:
-        return f'(cons {expr_to_str(expr.get_left())} {expr_to_str(expr.get_right())})'
+        if PRINT_CONS:
+            return f'(cons {expr_to_str(expr.get_left())} {expr_to_str(expr.get_right())})'
+        else:
+            return f'({expr_to_str(expr.get_left())} . {expr_to_str(expr.get_right())})'
     elif type(expr) == Delay:
         return f'#[promise (unforced)]'
     elif type(expr) == Macro:
@@ -1191,7 +1196,36 @@ def split_tokens(string):
     return tokens
 
 
+def check_brackets_matching(string):
+    """
+    checks if all brackets are matching
+    """
+    stack = []
+    for c in string:
+        if c == OPEN_PAREN:
+            stack.append(c)
+        elif c == CLOSE_PAREN:
+            if len(stack) > 0 and stack[-1] == OPEN_PAREN:
+                stack.pop()
+            else:
+                return False
+        elif c == OPEN_BRACKET:
+            stack.append(c)
+        elif c == CLOSE_BRACKET:
+            if len(stack) > 0 and stack[-1] == OPEN_BRACKET:
+                stack.pop()
+            else:
+                return False
+        else:
+            continue
+    if stack != []:
+        return False
+    return True
+
+
 def lex(string):
+    if not check_brackets_matching(string):
+        raise RuntimeError(f"Unmatched brackets/braces in program: {string}.")
     no_comments_str = remove_comments(string)
     no_open_brackets = no_comments_str.replace(OPEN_BRACKET, OPEN_PAREN)
     no_close_brackets = no_open_brackets.replace(CLOSE_BRACKET, CLOSE_PAREN)
@@ -1349,12 +1383,111 @@ def parse(tokens):
     return stack.pop()
 
 
+def create_cons(collector):
+    if DOT not in collector:
+        return collector
+    assert len(collector) >= 1
+    if len(collector) == 1:
+        assert collector[0] != DOT
+        return collector[0]
+    # create cons with left to right precedence
+    assert collector[1] == DOT
+    item = create_cons(collector[2:])
+    if len(item) == 1:
+        item = item[0]
+    assert collector[0] != DOT
+    if type(item) == list:
+        assert len(item) >= 3
+        assert item[-1] != DOT
+    else:
+        assert item != DOT
+    return [CONS, collector[0], item]
+
+
 def dot_reader(parsed):
-    pass
+    if type(parsed) != list:
+        return parsed
+    # is list
+    assert type(parsed) == list
+    # recursively dot read
+    new_parsed = deepcopy(parsed)
+    for i, elt in enumerate(parsed):
+        new_parsed = new_parsed[:i] + [dot_reader(elt)] + new_parsed[i + 1:]
+    # finish by combining dots
+    final_parsed = []
+    collector = []
+    for elt in new_parsed:
+        # elt is not a dot cases
+        if elt != DOT and collector == []:
+            collector.append(elt)
+        elif elt != DOT and collector[-1] == DOT:
+            collector.append(elt)
+        elif elt != DOT and collector[-1] != DOT:
+            final_parsed += create_cons(collector)
+            collector = []
+            collector.append(elt)
+        # elt is a dot case
+        elif elt == DOT and collector == []:
+            raise RuntimeError(
+                f"Dot cannot be beginning of expression: {parsed}.")
+        elif elt == DOT and collector[-1] == DOT:
+            raise RuntimeError(
+                f"Dot cannot follow dot in expression: {parsed}.")
+        elif elt == DOT and collector[-1] != DOT:
+            collector.append(elt)
+        else:
+            raise RuntimeError(
+                f"Impossible Failure to match in Dot parsing: {parsed}. ")
+    else:
+        # if collector ends in DOT: this is an error:
+        if collector != [] and collector[-1] == DOT:
+            raise RuntimeError(f"Cannot End Expression with Dot: {parsed}.")
+        # clear out collector when for loop finishes
+        final_parsed += create_cons(collector)
+        collector = []
+
+    return final_parsed
 
 
 def reorder_infix(parsed):
-    pass
+    if type(parsed) != list:
+        return parsed
+    # is list
+    assert type(parsed) == list
+    l = len(parsed)
+    # only odd will have reordering of infix, if even, return now
+    if l % 2 == 0:
+        return parsed
+    # recursively apply infix reordering
+    new_parsed = []
+    for elt in parsed:
+        new_parsed.append(reorder_infix(elt))
+    # gather operators
+    operators = set()
+    for i, elt in enumerate(new_parsed):
+        if i % 2 == 1:
+            if type(elt) == str and len(elt) >= 2 and INFIX_MARKER == elt[0] and INFIX_MARKER == elt[-1]:
+                operators.add(elt[1:-1])
+    # continue if only one infix operator
+    if len(operators) == 0:
+        return new_parsed
+    if len(operators) > 1:
+        raise RuntimeError(
+            f"Only 1 Infix Operator can be used in an expression: {parsed}.")
+    op = list(operators)[0]
+    final_parsed = []
+    for i, elt in enumerate(new_parsed):
+        if i % 2 == 1:
+            if type(elt) == str and len(elt) >= 2 and elt[1:-1] == op:
+                continue
+            else:
+                raise RuntimeError(
+                    f"Expected Infix Operator In Odd Position: {parsed}.")
+        else:
+            final_parsed.append(elt)
+    # add on infix operator at end
+    final_parsed = [op] + final_parsed
+    return final_parsed
 
 
 def postparse(parsed):
@@ -1365,11 +1498,13 @@ def postparse(parsed):
     with the fact that dot notation can generally not be read in to the 
     scheme reader.
     """
-    pass
+    parsed = dot_reader(parsed)
+    parsed = reorder_infix(parsed)
+    return parsed
 
 
 def frontend(string):
-    return parse(preparse(lex(string)))
+    return postparse(parse(preparse(lex(string))))
 
 
 if __name__ == "__main__":
@@ -1477,9 +1612,26 @@ if __name__ == "__main__":
              r"`(+ 3 @(list 3 '(+ 2 3)))",
              r"(println (+ 2 3) (+ 3 4) (- 0 3) (+ 9 9))",
              r"(+ [+ 2 3] 4)",
-             ";hello this is a comment\n (+ 2 3);2 3\n;2 3"]
+             ";hello this is a comment\n (+ 2 3);2 3\n;2 3",
+             r"[3 . 4]",
+             r"((3 . (2 . 3)) . (2 . 5))",
+             r"(3 . 4 . 5)",
+             r"(1 . (3 . 4 . 5) . 2)",
+             r"(0 . (1 . (2 . 3) . 4))",
+             r"(0 . 1 . 2 . 3 . 4 . 5 . 6)",
+             r"(0 . 1)",
+             r"(0 . 1 . 2)",
+             r"(0 . 1 . (2 . 3 . 4) . 5 . 6 . 7)",
+             r"(0 . (1 . (2 . 3 . 4)) . (5 . 6 . 7))",
+             r"((0 . (1 . (2 . 3 . 4))) . (5 . 6 . 7))",
+             r"(1 $+$ 2)",
+             r"(1 $+$ 2 $+$ 3)",
+             r"(1 $+$ 2 $+$ 3 $+$ 4)",
+             r"(1 $-$ 2 $-$ 3)",
+             r"(1 $-$ 2 $-$ (1 $*$ 2 $*$ 3 $*$ 4 $*$ 5 $*$ 6))",
+             r"(1 $+$ ((2 $*$ 3) $-$ 4))"]
     for string in tests:
-        print("-------------------")
+        print("-" * 70)
         print(expr_to_str(frontend(string)))
         context = {}
         print(expr_to_str(eval_expr(frontend(string), context, False)))
