@@ -18,3 +18,7 @@ I have also added a few extra forms as "native" forms to the interpreter, like m
 The next step will be to understand continuations, especially call/cc, do some translations to continuation passing form, and add in call/cc. This next step will likely not occur in the nearby future; hopefully it can be done soon. 
 
 I've also been meaning to play around with intermediate representations, ASTs, control flow graph generation, and various optimizations on the the control flow graph. Work on that will probably occur over the summer, on a predefined AST that I have been using. As a start, I'd like to be able to generate control flow graphs for the language I created, and add on simple optimizations like dead code elimination for obvious things like returns, breaks and continues, constant propagation and constant folding, and other optimizations like these. After, I would probably pursue more complex optimizations like conditional or loop related optimizations. 
+
+To Run the Scheme Interpreter, make sure Python3 is installed, prefereably 3.7 or higher.
+
+run ```python3 scheme.py``` to start the repl. 
