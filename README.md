@@ -9,6 +9,8 @@ There is a Typed Pi Calculus and non-typed Pi Calculus interpreter.
 
 There is a Scheme/Racket interpreter in these files. Some of the operations may be specific to Racket. The interpreter was built for me to understand Racket quickly, so that I could get used to some work that I was working on at the time. I try to be as faithful to the LISP idea that data is a program and vice versa in the interpreter. Thus, the end goal is to be able to eval the program data at the same time it is running. First class continuations may also be added, if I can figure out a way to create them. 
 
+Following the idea that program is equivalent to data, I have added non-standard parsing for dot notation, that parses it as Cons pairs only, and in all applicable situations, unlike the equivalent in Racket or Scheme. To do infix dot notation, instead, wrap the function in dollar signs, e.g. ```(1 $x$ 1)``` to get ```(+ 1 2)``` or ```(1 $-$ 2 $-$ 3)``` to get ```(- 1 2 3)```. The parsing is recursive, but simple, so there is no operator precedence and it must be completely shown with parentheses. 
+
 Note that virtually everything in the Scheme/Racket interpreter is represented as a list in Python.
 
 Most of the obvious features for Scheme has been added like, '  @ and , for quoting forms.
