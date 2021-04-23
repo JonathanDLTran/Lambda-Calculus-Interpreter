@@ -127,7 +127,7 @@ class String():
 class Lambda():
     def __init__(self, args, bodies, is_variadic):
         assert type(args) == list
-        assert len(args) >= 1
+        assert len(args) >= 0  # 0 arg function allowed for defines
         assert type(bodies) == list
         assert len(bodies) >= 1
         assert type(is_variadic) == bool
@@ -286,7 +286,8 @@ def eval_expr(expr, ctx, in_quasi):
         return expr
 
     assert type(expr) == list
-    assert len(expr) >= 2
+    # allow greater than or equal to 1 for function with no args
+    assert len(expr) >= 1
 
     first = expr[0]
     # Named Arithmetic Operators
@@ -384,7 +385,7 @@ def eval_expr(expr, ctx, in_quasi):
     elif in_quasi:
         return eval_in_quasi_return(expr, ctx, in_quasi)
     # forms that are applications
-    elif len(expr) >= 2:
+    elif len(expr) >= 1:
         return eval_app(expr, ctx, in_quasi)
     else:
         raise RuntimeError(f"Expression could not be matched: {expr}.")
@@ -710,29 +711,38 @@ def eval_define(expr, ctx, in_quasi):
     if in_quasi:
         return handle_quasi(expr, ctx, in_quasi)
     names = expr[1]
-    if type(names) == list and len(names) > 1:
+    if type(names) == list and len(names) >= 1:
         # is a functional define
-        assert len(names) >= 2
-        function_name = names[0]
-        args = names[1:]
+        final_args = None
         is_variadic = False
-        final_args = []
-        for i, arg in enumerate(args):
-            if i != len(args) - 1:
-                assert type(arg) == str
-                final_args.append(arg)
-            else:
-                # last argument can be called Variadic
-                if type(arg) == list:
-                    assert len(arg) == 2
-                    fst, snd = arg
-                    assert fst == VARIADIC
-                    assert type(snd) == str
-                    is_variadic = True
-                    final_args.append(snd)
-                else:
+        function_name = None
+        # no arguments functional define
+        if len(names) == 1:
+            final_args = []
+            is_variadic = False
+            function_name = names[0]
+        else:
+            assert len(names) >= 2
+            function_name = names[0]
+            args = names[1:]
+            is_variadic = False
+            final_args = []
+            for i, arg in enumerate(args):
+                if i != len(args) - 1:
                     assert type(arg) == str
                     final_args.append(arg)
+                else:
+                    # last argument can be called Variadic
+                    if type(arg) == list:
+                        assert len(arg) == 2
+                        fst, snd = arg
+                        assert fst == VARIADIC
+                        assert type(snd) == str
+                        is_variadic = True
+                        final_args.append(snd)
+                    else:
+                        assert type(arg) == str
+                        final_args.append(arg)
         bodies = expr[2:]
         ctx[function_name] = Lambda(final_args, bodies, is_variadic)
         return function_name
@@ -776,7 +786,7 @@ def eval_lambda(expr, ctx, in_quasi):
 
 def eval_app(expr, ctx, in_quasi):
     assert type(expr) == list
-    assert len(expr) >= 2
+    assert len(expr) >= 1
     if in_quasi:
         return handle_quasi(expr, ctx, in_quasi)
     _lambda = eval_expr(expr[0], ctx, in_quasi)
@@ -1629,7 +1639,9 @@ if __name__ == "__main__":
              r"(1 $+$ 2 $+$ 3 $+$ 4)",
              r"(1 $-$ 2 $-$ 3)",
              r"(1 $-$ 2 $-$ (1 $*$ 2 $*$ 3 $*$ 4 $*$ 5 $*$ 6))",
-             r"(1 $+$ ((2 $*$ 3) $-$ 4))"]
+             r"(1 $+$ ((2 $*$ 3) $-$ 4))",
+             r"(define (f) 3)",
+             r"(begin (define (f) 3) (f))"]
     for string in tests:
         print("-" * 70)
         print(expr_to_str(frontend(string)))
