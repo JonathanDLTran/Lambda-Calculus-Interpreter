@@ -1,6 +1,24 @@
 # Lambda-Calculus-Interpreter
 Lambda Calculus Intepreter, an application of CS 4110 studies
 
+There is a control flow graph generator for the language I created last summer. To run, use the command:
+```
+python3 cfg.py
+```
+which will create a pdf artifact in the current directory with the control flow graph.
+Note that the language abstract syntax is in ast.py, and several other files contain other necessary classes. DOT and graphviz are used, so you must install using
+```
+brew install dot
+```
+for MAC, or use APT-GET for linux,
+and 
+```
+pip3 install graphviz
+```
+for the Python3 requirements.
+
+The next phase of work is to do simple transformations, like constant folding, simple algebraic simplification, a la CS 3110, and if possible, common subexpression elimination. Most of this will occur in the basic block level. 
+
 There are several interpreters in this repository.
 
 There are Call By Name and Call By Value interpreters for the Lambda calculus, using De Bruijn Notation. 
