@@ -1,235 +1,357 @@
-class Expr:
-    def __init__(self):
-        super().__init__()
+class AST:
+    """
+    AST is an abstract syntax tree
+    """
 
-    def __str__(self):
-        return f"Scheme Expr Abstract Class"
+    def __init__(self):
+        self.sentences = []
+
+    def is_empty(self):
+        return self.sentences == []
+
+
+class Expr(object):
+    """
+    Expr respresents an expression
+    ABSTRACT CLASS for all instantiated expression classes
+    """
+
+    def __init__(self):
+        pass
 
     def __repr__(self):
-        return self.__str__()
+        return "This is a abstract expression"
 
 
-class Constant(Expr):
-    def __init__(self, v):
+class IntValue(Expr):
+    """
+    IntValue represents an Int Value
+    """
+
+    def __init__(self, value):
         super().__init__()
-        self.value = v
+        self.value = value
 
     def get_value(self):
         return self.value
 
-    def __str__(self):
-        return f"{self.value}"
+    def __repr__(self):
+        return "(IntValue: " + str(self.value) + ")"
 
 
-class Boolean(Constant):
-    def __init__(self, v):
-        assert type(v) == bool
-        super().__init__(v)
+class BoolValue(Expr):
+    """
+    BoolValue represents an Bool Value
+    """
 
-    def __str__(self):
-        return f"{'#t' if self.value else '#f'}"
-
-
-class Integer(Constant):
-    def __init__(self, v):
-        assert type(v) == int
-        super().__init__(v)
-
-    def __str__(self):
-        return f"{self.value}"
-
-
-class String(Constant):
-    def __init__(self, v):
-        assert type(v) == str
-        super().__init__(v)
-
-    def __str__(self):
-        return f'"{self.value}"'
-
-
-class Var(Expr):
-    def __init__(self, var):
-        assert type(var) == str
+    def __init__(self, value):
         super().__init__()
-        self.var = var
+        self.value = value
 
-    def get_var(self):
-        return self.var
+    def get_value(self):
+        return self.value
 
-    def __str__(self):
-        return f"{self.var}"
+    def __repr__(self):
+        return "(BoolValue: " + str(self.value) + ")"
 
 
-class Quote(Expr):
-    def __init__(self, datum):
+class FloatValue(Expr):
+    """
+    FloatValue represents an float Value
+    """
+
+    def __init__(self, value):
         super().__init__()
-        self.datum = datum
+        self.value = value
 
-    def get_datum(self):
-        return self.datum
+    def get_value(self):
+        return self.value
 
-    def __str__(self):
-        return f"(quote {self.datum})"
+    def __repr__(self):
+        return "(FloatValue: " + str(self.value) + ")"
 
 
-class Unquote(Expr):
-    def __init__(self, expr):
-        assert isinstance(expr, Expr)
+class StrValue(Expr):
+    """
+    StrValue represents an String
+    """
+
+    def __init__(self, value):
         super().__init__()
+        self.value = value
+
+    def get_value(self):
+        return self.value
+
+    def __repr__(self):
+        return "(StrValue: " + str(self.value) + ")"
+
+
+class VarValue(Expr):
+    """
+    IntValue represents an Variable Value
+    """
+
+    def __init__(self, value):
+        super().__init__()
+        self.value = value
+
+    def get_value(self):
+        return self.value
+
+    def __repr__(self):
+        return "(VarValue: " + str(self.value) + ")"
+
+
+class Tuple(Expr):
+    """
+    Tuple represents an Tuple
+    """
+
+    def __init__(self, exprs_list):
+        super().__init__()
+        self.exprs = exprs_list
+        self.length = len(exprs_list)
+
+    def get_exprs(self):
+        return self.exprs
+
+    def get_length(self):
+        return self.length
+
+    def __repr__(self):
+        return "(Tuple: (" + ", ".join(list(map(lambda e: str(e), self.exprs))) + "))"
+
+
+class List(Expr):
+    """
+    List represents an list
+    """
+
+    def __init__(self, exprs_list):
+        super().__init__()
+        self.exprs = exprs_list
+        self.length = len(exprs_list)
+
+    def get_exprs(self):
+        return self.exprs
+
+    def get_length(self):
+        return self.length
+
+    def __repr__(self):
+        return "(List: [" + ", ".join(list(map(lambda e: str(e), self.exprs))) + "])"
+
+
+class Dict(Expr):
+    """
+    Dict represents an dictionary
+    """
+
+    def __init__(self, keys_list, values_list):
+        super().__init__()
+        assert len(keys_list) == len(values_list)
+        self.keys = keys_list
+        self.values = values_list
+        self.length = len(values_list)
+
+    def get_keys(self):
+        return self.keys
+
+    def get_vals(self):
+        return self.values
+
+    def get_length(self):
+        return self.length
+
+    def __repr__(self):
+        return "(Dict: {" + ", ".join(list(map(lambda k, v: str(k) + " : " + str(v), self.keys, self.values))) + "})"
+
+
+class Struct(Expr):
+    """
+    Struct represents an struct
+    """
+
+    def __init__(self, keys_list, values_list):
+        super().__init__()
+        assert len(keys_list) == len(values_list)
+        self.keys = keys_list
+        self.values = values_list
+        self.length = len(values_list)
+
+    def get_keys(self):
+        return self.keys
+
+    def get_vals(self):
+        return self.values
+
+    def get_length(self):
+        return self.length
+
+    def __repr__(self):
+        return "(Struct: {|" + ", ".join(list(map(lambda k, v: str(k) + " : " + str(v), self.keys, self.values))) + "|})"
+
+
+class Bop(Expr):
+    """
+    Bop represents e1 bop e2
+    """
+
+    def __init__(self, bop, left=None, right=None):
+        super().__init__()
+        self.bop = bop
+        self.left = left
+        self.right = right
+
+    def set_left(self, left):
+        self.left = left
+
+    def set_right(self, right):
+        self.right = right
+
+    def get_bop(self):
+        return self.bop
+
+    def get_left(self):
+        return self.left
+
+    def get_right(self):
+        return self.right
+
+    def __repr__(self):
+        return "(BOP: " + str(self.left) + str(self.bop) + str(self.right) + ")"
+
+
+class Unop(Expr):
+    """
+    Unop represents unop e
+    """
+
+    def __init__(self, unop, expr=None):
+        super().__init__()
+        self.unop = unop
         self.expr = expr
-
-    def get_expr(self):
-        return self.expr
-
-    def __str__(self):
-        return f"(unquote {self.expr})"
-
-
-class Quasiquote(Expr):
-    def __init__(self, expr):
-        assert isinstance(expr, Expr)
-        super().__init__()
-        self.expr = expr
-
-    def get_expr(self):
-        return self.expr
-
-    def __str__(self):
-        return f"(quasiquote {self.expr})"
-
-
-class If(Expr):
-    def __init__(self, guard, expr):
-        assert isinstance(guard, Expr)
-        assert isinstance(expr, Expr)
-        super().__init__()
-        self.guard = guard
-        self.expr = expr
-
-    def get_guard(self):
-        return self.guard
-
-    def get_expr(self):
-        return self.expr
-
-    def set_guard(self, guard):
-        assert isinstance(guard, Expr)
-        self.guard = guard
 
     def set_expr(self, expr):
-        assert isinstance(expr, Expr)
         self.expr = expr
 
-    def __str__(self):
-        return f"(if {self.guard} {self.expr})"
+    def get_unop(self):
+        return self.unop
+
+    def get_expr(self):
+        return self.expr
+
+    def __repr__(self):
+        return "(UNOP: " + str(self.unop) + str(self.expr) + ")"
 
 
-class IfElse(Expr):
-    def __init__(self, guard, e1, e2):
-        assert isinstance(guard, Expr)
-        assert isinstance(e1, Expr)
-        assert isinstance(e2, Expr)
-        super().__init__()
-        self.guard = guard
-        self.fst = e1
-        self.snd = e2
+class Assign(Expr):
+    """
+    assign represents var assign expre
+    """
 
-    def get_guard(self):
-        return self.guard
-
-    def set_guard(self, guard):
-        assert isinstance(guard, Expr)
-        self.guard = guard
-
-    def get_fst(self):
-        return self.fst
-
-    def set_fst(self, expr):
-        assert isinstance(expr, Expr)
-        self.fst = expr
-
-    def get_snd(self):
-        return self.snd
-
-    def set_snd(self, expr):
-        assert isinstance(expr, Expr)
-        self.snd = expr
-
-    def __str__(self):
-        return f"(if {self.guard} {self.fst} {self.snd})"
-
-
-class Set(Expr):
-    def __init__(self, var, expr):
-        assert type(var) == str
-        assert isinstance(expr, Expr)
+    def __init__(self, var, expr=None):
         super().__init__()
         self.var = var
         self.expr = expr
 
-    def get_var(self):
-        return self.var
+    def set_expr(self, expr):
+        self.expr = expr
 
     def set_var(self, var):
-        assert type(var) == str
         self.var = var
 
     def get_expr(self):
         return self.expr
 
-    def set_expr(self, expr):
-        assert isinstance(expr, Expr)
-        self.expr = expr
+    def get_var(self):
+        return self.var
 
-    def __str__(self):
-        return f"(set! {self.var} {self.expr})"
+    def __repr__(self):
+        return "(Assign: " + str(self.var) + " := " + str(self.expr) + ")"
 
 
-class App(Expr):
-    def __init__(self, expr_list):
-        assert type(expr_list) == list
-        assert len(expr_list) >= 2
-        for expr in expr_list:
-            assert isinstance(expr, Expr)
+class While(Expr):
+    """
+    While represents
+    while guard_expr dowhile
+        phrases
+    endwhile
+    """
+
+    def __init__(self, guard=None, body_list=None):
         super().__init__()
-        self.fun = expr_list[0]
-        self.args = expr_list[1:]
+        self.guard = guard
+        self.body = body_list
 
-    def get_args(self):
-        return self.args
+    def set_guard(self, guard):
+        self.guard = guard
 
-    def set_args(self, args):
-        assert type(args) == list
-        for arg in args:
-            assert type(arg) == str
-        self.args = args
+    def set_body(self, body_list):
+        self.body = body_list
 
-    def get_fun(self):
-        return self.fun
+    def get_guard(self):
+        return self.guard
 
-    def set_fun(self, fun):
-        assert isinstance(fun, Expr)
-        self.fun = fun
+    def get_body(self):
+        return self.body
 
-    def __str__(self):
-        args_str = ""
-        for i, arg in enumerate(self.args):
-            args_str += str(arg)
-            if i != len(self.args) - 1:
-                args_str += " "
-        return f"({self.fun} {args_str})"
+    def __repr__(self):
+        return "(while " + str(self.guard) + " dowhile\n\t" + "\n\t".join(list(map(lambda phrase: str(phrase), self.body))) + "\nendwhile)"
 
 
-class Lambda(Expr):
-    def __init__(self, args_list, body):
-        assert type(args_list) == list
-        for arg in args_list:
-            assert type(arg) == str
-        assert isinstance(body, Expr)
+class For(Expr):
+    """
+    For represents
+    For var from int to int by int dofor
+        phrases
+    endfor
+    """
+
+    def __init__(self, index, from_int, end_int, by, body_list):
         super().__init__()
+        self.index = index
+        self.from_int = from_int
+        self.end_int = end_int
+        self.by = by
+        self.body = body_list
+
+    def get_index(self):
+        return self.index
+
+    def get_from(self):
+        return self.from_int
+
+    def get_end(self):
+        return self.end_int
+
+    def get_by(self):
+        return self.by
+
+    def get_body(self):
+        return self.body
+
+    def __repr__(self):
+        return "(for " + str(self.index) + " from " + str(self.from_int) + " to " + str(self.end_int) + " by " + str(self.by) + " dofor\n\t" + "\n\t".join(list(map(lambda phrase: str(phrase), self.body))) + "\nendfor)"
+
+
+class Function(Expr):
+    """
+    Function represents
+    fun f a b c ->
+        body
+    endfun
+    """
+
+    def __init__(self, name, args_list, body_list):
+        super().__init__()
+        self.name = name
         self.args = args_list
-        self.body = body
+        self.body = body_list
+
+    def get_name(self):
+        return self.name
 
     def get_args(self):
         return self.args
@@ -237,134 +359,136 @@ class Lambda(Expr):
     def get_body(self):
         return self.body
 
-    def set_args(self, args):
-        assert type(args) == list
-        for arg in args:
-            assert type(arg) == str
-        self.args = args
-
-    def set_body(self, body):
-        assert isinstance(body, Expr)
-        self.body = body
-
-    def __str__(self):
-        args_str = ""
-        for i, arg in enumerate(self.args):
-            args_str += str(arg)
-            if i != len(self.args) - 1:
-                args_str += " "
-        return f"(lambda [{args_str}] {self.body})"
+    def __repr__(self):
+        return "(fun " + str(self.name) + " " + " ".join(list(map(lambda arg: str(arg), self.args))) + " ->\n\t" + "\n\t".join(list(map(lambda phrase: str(phrase), self.body))) + "\nendfun)"
 
 
-class Let(Expr):
-    def __init__(self, bindings, bodies):
-        assert type(bodies) == list
-        assert len(bodies) > 0
-        for body in bodies:
-            assert isinstance(body, Expr)
-        assert type(bindings) == list
-        for binding in bindings:
-            assert type(binding) == tuple
-            assert len(binding) == 2
-            name, expr = binding
-            assert type(name) == str
-            assert isinstance(expr, Expr)
+class IfThenElse(Expr):
+    """
+    IFThenElse represents an if then else erpression
+    """
+
+    def __init__(self, if_guard, if_body, elif_guards=[], elif_bodies=[], else_body=None):
         super().__init__()
-        self.bindings = bindings
-        self.bodies = bodies
+        self.if_pair = (if_guard, if_body)
+        self.elif_list = (elif_guards, elif_bodies)
+        self.else_body = else_body
 
-    def get_bindings(self):
-        return self.bindings
+    def get_if_pair(self):
+        return self.if_pair
 
-    def get_bodies(self):
-        return self.bodies
+    def get_elif_pair_list(self):
+        return self.elif_list
 
-    def set_bindings(self, bindings):
-        assert type(bindings) == list
-        for binding in bindings:
-            assert type(binding) == tuple
-            assert len(binding) == 2
-            name, expr = binding
-            assert type(name) == str
-            assert isinstance(expr, Expr)
-        self.bindings = bindings
-
-    def set_bodies(self, bodies):
-        assert type(bodies) == list
-        assert len(bodies) > 0
-        for body in bodies:
-            assert isinstance(body, Expr)
-        self.bodies = bodies
-
-    def __str__(self):
-        bindings_str = ""
-        for i, (name, expr) in enumerate(self.bindings):
-            bindings_str += f"({name} {expr})"
-            if i != len(self.bindings) - 1:
-                bindings_str += " "
-        bodies_str = ""
-        for i, body in enumerate(self.bodies):
-            bodies_str += str(body)
-            if i != len(self.bodies) - 1:
-                bodies_str += " "
-        return f"(let [{bindings_str}] {bodies_str})"
-
-
-class Definition:
-    def __init__(self):
-        super().__init__()
-
-    def __str__(self):
-        return f"Scheme Definition Abstract Class"
+    def get_else(self):
+        return self.else_body
 
     def __repr__(self):
-        return self.__str__()
+        (if_guard, if_body) = self.if_pair
+        elif_guards, elif_bodies = self.elif_list
+        else_body = self.else_body
+        return ("(if " + str(if_guard) + " then\n\t" + "\n\t".join(list(map(lambda phrase: str(phrase), if_body))) + "\nendif\n"
+                + ("" if elif_guards == [] else "\n".join(list(map(lambda g, b: "elif " + str(g) + " then\n\t" +
+                                                                   "\n\t".join(list(map(lambda phrase: str(phrase), b))) + "\nendelif\n", elif_guards, elif_bodies))))
+                + ("" if else_body == None else "else\n\t" +
+                   "\n\t".join(list(map(lambda phrase: str(phrase), else_body))) + "\nendelse\n")
+                + ")"
+                )
 
 
-class Def(Definition):
-    def __init__(self, var, expr):
-        assert type(var) == str
-        assert isinstance(expr, Expr)
+class Extern(Expr):
+    """
+    Extern represents fun extern (arg1 arg2...) with possibly no args as in
+    extern () , with only open and close brackets.
+    """
+
+    def __init__(self, fun, args_list=[]):
         super().__init__()
-        self.var = var
+        self.fun = fun
+        self.args_list = args_list
+
+    def set_args(self, args_list):
+        self.args_list = args_list
+
+    def get_fun(self):
+        return self.fun
+
+    def get_args(self):
+        return self.args_list
+
+    def __repr__(self):
+        return "(Extern: " + str(self.fun) + "(" + (" ".join(list(map(lambda a: str(a), self.args_list)))) + ")" + ")"
+
+
+class Apply(Expr):
+    """
+    Apply represents fun (arg1 arg2...) with possibly no args as in
+    fun () , with only open and close brackets.
+    """
+
+    def __init__(self, fun, args_list=[]):
+        super().__init__()
+        self.fun = fun
+        self.args_list = args_list
+
+    def set_args(self, args_list):
+        self.args_list = args_list
+
+    def get_fun(self):
+        return self.fun
+
+    def get_args(self):
+        return self.args_list
+
+    def __repr__(self):
+        return "(Apply: " + str(self.fun) + "(" + (" ".join(list(map(lambda a: str(a), self.args_list)))) + ")" + ")"
+
+
+class Return(Expr):
+    """
+    return represents
+    return expr;
+    """
+
+    def __init__(self, body):
+        super().__init__()
+        self.body = body
+
+    def get_body(self):
+        return self.body
+
+    def __repr__(self):
+        return "(Return: " + str(self.body) + ";)"
+
+
+class Ignore(Expr):
+    """
+    ignore represents
+    expr;
+    """
+
+    def __init__(self, expr):
+        super().__init__()
         self.expr = expr
 
-    def get_expr(self): return self.expr
+    def get_expr(self):
+        return self.expr
 
-    def get_var(self): return self.var
-
-    def set_expr(self, expr):
-        assert isinstance(expr, Expr)
-        self.expr = expr
-
-    def set_var(self, var):
-        assert type(var) == str
-        self.var = var
-
-    def __str__(self):
-        return f"(define {self.var} {self.expr})"
+    def __repr__(self):
+        return "(Ignore: " + str(self.expr) + ";)"
 
 
-class Begin(Definition):
-    def __init__(self, expr_list):
-        assert type(expr_list) == list
-        for expr in expr_list:
-            assert isinstance(expr, Expr)
+class Program(Expr):
+    """
+    Program represents a syntacucally valid program
+    """
+
+    def __init__(self, phrase_list=[]):
         super().__init__()
-        self.exprs = expr_list
+        self.phrases = phrase_list
 
-    def get_exprs(self): return self.exprs
+    def get_phrases(self):
+        return self.phrases
 
-    def set_exprs(self, exprs):
-        assert type(exprs) == list
-        for expr in exprs:
-            assert isinstance(expr, Expr)
-        self.exprs = exprs
-
-    def __str__(self):
-        exprs_str = ""
-        for i, expr in enumerate(self.exprs):
-            exprs_str += str(expr)
-            if i != len(self.exprs) - 1:
-                exprs_str += " "
-        return f"(begin {exprs_str})"
+    def __repr__(self):
+        return "(Program:\n" + "\n".join(list(map(lambda phrase: str(phrase), self.phrases))) + "\n)"
