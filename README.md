@@ -1,6 +1,14 @@
 # Lambda-Calculus-Interpreter
 Lambda Calculus Intepreter, an application of CS 4110 studies
 
+The automatic differentiation calculator calculates derivatives for simple expressions. It can be run with:
+```
+python3 diff.py
+```
+which will prompt you to enter and expression, which you can differentiate.
+
+Optimizations to the automatic differentiation will be added later.
+
 There is a control flow graph generator for the language I created last summer. To run, use the command:
 ```
 python3 cfg.py
