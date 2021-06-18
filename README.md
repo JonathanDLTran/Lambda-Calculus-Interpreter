@@ -1,6 +1,7 @@
 # Lambda-Calculus-Interpreter
 Lambda Calculus Intepreter, an application of CS 4110 studies
 
+## Automatic Differentiation
 The automatic differentiation calculator calculates derivatives for simple expressions. It can be run with:
 ```
 python3 diff.py
@@ -10,6 +11,9 @@ which will prompt you to enter and expression, which you can differentiate.
 Some computer algebra optimizations were added to be used after the derivative was calculated. The optimizations are detailed 
 from https://www.cs.cornell.edu/courses/cs3110/2008fa/hw/ps2/ps2.html. 
 
+Note that this differentiation program is written in a functional style, close to how one would write it in OCaml. Some things are clumsier, for example, having to reflect on types instead of having the type be known at compile time, when matching. 
+
+## Control Flow Graph Generator
 There is a control flow graph generator for the language I created last summer. To run, use the command:
 ```
 python3 cfg.py
@@ -28,12 +32,17 @@ for the Python3 requirements.
 
 The next phase of work is to do simple transformations, like constant folding, simple algebraic simplification, a la CS 3110, and if possible, common subexpression elimination. Most of this will occur in the basic block level. 
 
+## Interpreters
 There are several interpreters in this repository.
 
+### Lambda Calculus Interpreters
 There are Call By Name and Call By Value interpreters for the Lambda calculus, using De Bruijn Notation. 
 
 There is a Typed Pi Calculus and non-typed Pi Calculus interpreter. 
 
+For the OCaml programs, compile normally and run the generated binaries. 
+
+### Scheme Interpreter
 There is a Scheme/Racket interpreter in these files. Some of the operations may be specific to Racket. The interpreter was built for me to understand Racket quickly, so that I could get used to some work that I was working on at the time. I try to be as faithful to the LISP idea that data is a program and vice versa in the interpreter. Thus, the end goal is to be able to eval the program data at the same time it is running. First class continuations may also be added, if I can figure out a way to create them. 
 
 Following the idea that program is equivalent to data, I have added non-standard parsing for dot notation, that parses it as Cons pairs only, and in all applicable situations, unlike the equivalent in Racket or Scheme. To do infix dot notation, instead, wrap the function in dollar signs, e.g. ```(1 $x$ 1)``` to get ```(+ 1 2)``` or ```(1 $-$ 2 $-$ 3)``` to get ```(- 1 2 3)```. The parsing is recursive, but simple, so there is no operator precedence and it must be completely shown with parentheses. 
@@ -51,5 +60,3 @@ I've also been meaning to play around with intermediate representations, ASTs, c
 To Run the Scheme Interpreter, make sure Python3 is installed, prefereably 3.7 or higher.
 
 run ```python3 scheme.py``` to start the repl. You will have to have pulled scheme.py and eval.py for it to work. 
-
-For the OCaml programs, compile normally and run the generated binaries. 
