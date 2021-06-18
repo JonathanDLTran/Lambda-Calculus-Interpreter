@@ -26,6 +26,9 @@ class Var(Expr):
         super().__init__()
         self.var = var
 
+    def get_var(self):
+        return self.var
+
     def __repr__(self):
         return f"{self.var}"
 

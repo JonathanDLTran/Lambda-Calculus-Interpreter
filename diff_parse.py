@@ -123,8 +123,36 @@ def parse(tokens):
                                     f"Failed to match in Parse: {tokens}")
 
 
-def main():
-    pass
+def get_vars(expr):
+    assert isinstance(expr, Expr)
+
+    if type(expr) == Float:
+        return []
+    elif type(expr) == Const:
+        return []
+    elif type(expr) == Var:
+        return [expr.get_var()]
+    elif type(expr) == Function:
+        return get_vars(expr.get_e())
+    elif type(expr) == Binop:
+        return get_vars(expr.get_l()) + get_vars(expr.get_r())
+    elif type(expr) == Unop:
+        return get_vars(expr.get_e())
+
+
+def check_single_var(expr):
+    assert isinstance(expr, Expr)
+
+    return len(set(get_vars(expr))) <= 1
+
+
+def parse_main(tokens):
+    assert type(tokens) == list
+
+    expr = parse(tokens)
+    if check_single_var(expr):
+        return expr
+    raise RuntimeError(f"More than 1 variable: {expr}.")
 
 
 def test():

@@ -1,6 +1,7 @@
 from token_constants import *
 from parser_classes import *
-from diff_parse import parse
+from diff_parse import parse_main
+from diff_lex import lex
 
 
 def contains_var(expr):
@@ -89,16 +90,31 @@ def diff(expr):
 
 
 def main():
-    pass
+    print("Automatic Differentiation")
+    while True:
+        try:
+            string = input("> ")
+            tokens = lex(string)
+            expr = parse_main(tokens)
+            deriv = diff(expr)
+            print(deriv)
+        except KeyboardInterrupt:
+            print("Quitting...")
+            exit(0)
+        except Exception:
+            print("Issue in expression. ")
+            continue
 
 
 def test():
-    tokens = ["x", POW, 2.]
-    parsed = parse(tokens)
-    deriv = diff(parsed)
-    print(parsed)
+    s = "3 + 4"
+    tokens = lex(s)
+    expr = parse_main(tokens)
+    deriv = diff(expr)
+    print(tokens)
+    print(expr)
     print(deriv)
 
 
 if __name__ == "__main__":
-    test()
+    main()
