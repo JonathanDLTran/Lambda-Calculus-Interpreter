@@ -7,7 +7,8 @@ python3 diff.py
 ```
 which will prompt you to enter and expression, which you can differentiate.
 
-Optimizations to the automatic differentiation will be added later.
+Some computer algebra optimizations were added to be used after the derivative was calculated. The optimizations are detailed 
+from https://www.cs.cornell.edu/courses/cs3110/2008fa/hw/ps2/ps2.html. 
 
 There is a control flow graph generator for the language I created last summer. To run, use the command:
 ```
