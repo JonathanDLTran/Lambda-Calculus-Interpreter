@@ -9,6 +9,10 @@ BINOPS = [
 UNOPS = [
     SUB
 ]
+OPS = {
+    *UNOPS, *BINOPS
+}
+
 
 LEFT_PAREN = "("
 RIGHT_PAREN = ")"

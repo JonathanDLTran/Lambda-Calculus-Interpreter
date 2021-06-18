@@ -10,15 +10,23 @@ class Expr(object):
 
 
 class Float(Expr):
-    def __init__(self, float):
+    def __init__(self, f):
         super().__init__()
-        self.float = float
+        self.float = f
+
+    def get_f(self):
+        return self.float
 
     def __repr__(self):
         return f"{self.float}"
 
     def __str__(self):
         return self.__repr__()
+
+    def __eq__(self, value):
+        if type(value) != Float:
+            return False
+        return value.float == self.float
 
 
 class Var(Expr):
@@ -34,6 +42,11 @@ class Var(Expr):
 
     def __str__(self):
         return self.__repr__()
+
+    def __eq__(self, value):
+        if type(value) != Var:
+            return False
+        return value.var == self.var
 
 
 class Binop(Expr):
@@ -58,6 +71,11 @@ class Binop(Expr):
     def __str__(self):
         return self.__repr__()
 
+    def __eq__(self, value):
+        if type(value) != Binop:
+            return False
+        return value.op == self.op and value.left == self.left and value.right == self.right
+
 
 class Unop(Expr):
     def __init__(self, op, expr):
@@ -77,6 +95,11 @@ class Unop(Expr):
     def __str__(self):
         return self.__repr__()
 
+    def __eq__(self, value):
+        if type(value) != Unop:
+            return False
+        return value.op == self.op and value.expr == self.expr
+
 
 class Function(Expr):
     def __init__(self, f, expr):
@@ -88,13 +111,18 @@ class Function(Expr):
         return self.f
 
     def get_e(self):
-        return self.e
+        return self.expr
 
     def __repr__(self):
         return f"{self.f}({self.expr})"
 
     def __str__(self):
         return self.__repr__()
+
+    def __eq__(self, value):
+        if type(value) != Function:
+            return False
+        return value.expr == self.expr and value.f == self.f
 
 
 class Const(Expr):
@@ -107,3 +135,8 @@ class Const(Expr):
 
     def __str__(self):
         return self.__repr__()
+
+    def __eq__(self, value):
+        if type(value) != Const:
+            return False
+        return value.const == self.const

@@ -2,6 +2,7 @@ from token_constants import *
 from parser_classes import *
 from diff_parse import parse_main
 from diff_lex import lex
+from diff_optim import optimize
 
 
 def contains_var(expr):
@@ -76,11 +77,11 @@ def diff(expr):
     assert isinstance(expr, Expr)
 
     if type(expr) == Float:
-        return Const(float(0))
+        return Float(float(0))
     elif type(expr) == Const:
-        return Const(float(0))
+        return Float(float(0))
     elif type(expr) == Var:
-        return Const(float(1))
+        return Float(float(1))
     elif type(expr) == Function:
         return diff_function(expr)
     elif type(expr) == Binop:
@@ -97,7 +98,8 @@ def main():
             tokens = lex(string)
             expr = parse_main(tokens)
             deriv = diff(expr)
-            print(deriv)
+            optimized = optimize(deriv)
+            print(optimized)
         except KeyboardInterrupt:
             print("Quitting...")
             exit(0)
@@ -111,9 +113,11 @@ def test():
     tokens = lex(s)
     expr = parse_main(tokens)
     deriv = diff(expr)
+    optimized = optimize(deriv)
     print(tokens)
     print(expr)
     print(deriv)
+    print(optimized)
 
 
 if __name__ == "__main__":
