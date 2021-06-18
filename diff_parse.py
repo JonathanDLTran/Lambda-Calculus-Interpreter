@@ -1,91 +1,5 @@
 from token_constants import *
-
-
-class Expr(object):
-    def __init__(self):
-        super().__init__()
-
-    def __repr__(self):
-        return super().__repr__()
-
-    def __str__(self):
-        return super().__str__()
-
-
-class Float(Expr):
-    def __init__(self, float):
-        super().__init__()
-        self.float = float
-
-    def __repr__(self):
-        return f"{self.float}"
-
-    def __str__(self):
-        return self.__repr__()
-
-
-class Var(Expr):
-    def __init__(self, var):
-        super().__init__()
-        self.var = var
-
-    def __repr__(self):
-        return f"{self.var}"
-
-    def __str__(self):
-        return self.__repr__()
-
-
-class Binop(Expr):
-    def __init__(self, op, left, right):
-        super().__init__()
-        self.op = op
-        self.left = left
-        self.right = right
-
-    def __repr__(self):
-        return f"({self.left}) {self.op} ({self.right})"
-
-    def __str__(self):
-        return self.__repr__()
-
-
-class Unop(Expr):
-    def __init__(self, op, expr):
-        super().__init__()
-        self.op = op
-        self.expr = expr
-
-    def __repr__(self):
-        return f"{self.op} {self.expr}"
-
-    def __str__(self):
-        return self.__repr__()
-
-
-class Function(Expr):
-    def __init__(self, f, expr):
-        super().__init__()
-        self.f = f
-        self.expr = expr
-
-    def __repr__(self):
-        return f"{self.f}({self.expr})"
-
-    def __str__(self):
-        return self.__repr__()
-
-
-class Const(Expr):
-    def __init__(self, const):
-        super().__init__()
-        self.const = const
-
-    def __repr__(self):
-        return f"{self.const}"
-
-    def __str__(self):
-        return self.__repr__()
+from parser_classes import *
 
 
 def parse_float(tokens):
@@ -102,7 +16,7 @@ def parse_var(tokens):
     assert type(tokens[0]) == str
     assert tokens[0] not in CONSTANTS
 
-    return Float(tokens[0])
+    return Var(tokens[0])
 
 
 def parse_binop(op, tokens):
@@ -214,7 +128,8 @@ def main():
 
 
 def test():
-    tokens = [4., ADD, 3., SUB, 2., ADD, 5., ADD, 3., ADD, 3., MUL, 2.]
+    tokens = [LN, LEFT_PAREN, 4., ADD, 3., RIGHT_PAREN, SUB, LEFT_PAREN,
+              2., ADD, 5., ADD, 3., ADD, 3., MUL, 2., RIGHT_PAREN]
     print(parse(tokens))
 
 
