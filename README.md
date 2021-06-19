@@ -6,12 +6,18 @@ The automatic differentiation calculator calculates derivatives for simple expre
 ```
 python3 diff.py
 ```
-which will prompt you to enter and expression, which you can differentiate.
+which will prompt you to enter an expression, which you can differentiate.
 
 Some computer algebra optimizations were added to be used after the derivative was calculated. The optimizations are detailed 
 from https://www.cs.cornell.edu/courses/cs3110/2008fa/hw/ps2/ps2.html. 
 
-Note that this differentiation program is written in a functional style, close to how one would write it in OCaml. Some things are clumsier, for example, having to reflect on types instead of having the type be known at compile time, when matching. 
+Note that this differentiation program is written in a functional style, close to how one would write it in OCaml. Some things are clumsier, for example, having to reflect on types instead of having the type be known at compile time, when matching.
+
+To find roots, Newton's method is used. You can run
+```
+python3 diff_root.py
+```
+and enter an expression, a guess (floating point), a precision (floating point) and the number of iterations (non-negative integer), and an approximate floating point root will be calculated.
 
 ## Control Flow Graph Generator
 There is a control flow graph generator for the language I created last summer. To run, use the command:
