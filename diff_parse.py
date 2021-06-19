@@ -1,5 +1,6 @@
 from token_constants import *
 from parser_classes import *
+from diff_lex import lex
 
 
 def parse_float(tokens):
@@ -158,6 +159,8 @@ def parse_main(tokens):
 def test():
     tokens = [LN, LEFT_PAREN, 4., ADD, 3., RIGHT_PAREN, SUB, LEFT_PAREN,
               2., ADD, 5., ADD, 3., ADD, 3., MUL, 2., RIGHT_PAREN]
+    s = "x + (x * x) * x * x * x * x * x * x * x * x * x * x * x * x * x * x * x * x * x * x * x * x * x * x * x"
+    tokens = lex(s)
     print(parse(tokens))
 
 
