@@ -130,6 +130,9 @@ class Const(Expr):
         super().__init__()
         self.const = const
 
+    def get_c(self):
+        return self.const
+
     def __repr__(self):
         return f"{self.const}"
 
