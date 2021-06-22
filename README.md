@@ -19,6 +19,8 @@ python3 diff_root.py
 ```
 and enter an expression, a guess (floating point), a precision (floating point) and the number of iterations (non-negative integer), and an approximate floating point root will be calculated.
 
+Parsing is done using a top-down recursive parser combinator design, for easy extensibility, reuse of components and addition of extra features. Dynamic programming is used to make parsing run in polynomial time of the input number of tokens, and polynomial space as well. Currently, extra parsing features can be added by extending the parser with other classes, and adding in the designated parsing patterns, and then adding in the call to the function to parse in the main parser body. To add in features like parsing precedence, simply change the order in which you call functions to parse. For example, if multiplication is to be parsed before addition, call parse_mul() before parse_add(). 
+
 ## Control Flow Graph Generator
 There is a control flow graph generator for the language I created last summer. To run, use the command:
 ```
