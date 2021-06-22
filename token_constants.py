@@ -3,6 +3,9 @@ SUB = "-"
 MUL = "*"
 DIV = "\\"
 POW = "^"
+# reverse ordered by precedence to allow grouping more tightly those
+# terms with higher precedence
+# e.g. ADD has lowest, POW has highest
 BINOPS = [
     ADD, SUB, MUL, DIV, POW
 ]
