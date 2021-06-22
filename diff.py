@@ -1,6 +1,6 @@
 from token_constants import *
 from parser_classes import *
-from diff_parse import parse_main
+from diff_parse_fast import parse
 from diff_lex import lex
 from diff_optim import optimize
 
@@ -96,7 +96,7 @@ def main():
         try:
             string = input("> ")
             tokens = lex(string)
-            expr = parse_main(tokens)
+            expr = parse(tokens)
             deriv = diff(expr)
             optimized = optimize(deriv)
             print(optimized)
@@ -111,7 +111,7 @@ def main():
 def test():
     s = "3 + 4"
     tokens = lex(s)
-    expr = parse_main(tokens)
+    expr = parse(tokens)
     deriv = diff(expr)
     optimized = optimize(deriv)
     print(tokens)

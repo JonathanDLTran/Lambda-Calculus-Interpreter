@@ -3,7 +3,7 @@ from token_constants import *
 from math import sin, cos, log
 from diff import diff
 from diff_lex import lex
-from diff_parse import parse_main
+from diff_parse_fast import parse
 from diff_optim import optimize
 
 
@@ -129,7 +129,7 @@ def main():
             except Exception:
                 raise Exception()
             tokens = lex(string)
-            expr = parse_main(tokens)
+            expr = parse(tokens)
             root = newton(expr, guess, precision, niter)
             if root == None:
                 print("No root was found.")

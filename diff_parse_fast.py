@@ -3,68 +3,64 @@ from parser_classes import *
 from diff_lex import lex
 
 
+FLOAT = "float"
+CONST = "const"
+VAR = "var"
+UNOP = "unop"
+FUNC = "func"
+BINOP = "binop"
+PARENS = "parens"
+
+
 def parse_float(tokens, start, end, parse_map):
-    assert type(tokens) == list
-    assert type(start) == int
-    assert start >= 0
-    assert type(end) == int
-    assert end > start
-    assert end <= len(tokens)
-    assert len(tokens[start:end]) == 1
-    assert type(tokens[start]) == float
-    assert type(parse_map) == dict
+    try:
+        assert type(tokens) == list
+        assert type(start) == int
+        assert start >= 0
+        assert type(end) == int
+        assert end > start
+        assert end <= len(tokens)
+        assert len(tokens[start:end]) == 1
+        assert type(tokens[start]) == float
+        assert type(parse_map) == dict
+    except Exception:
+        return None
 
-    # check memoized
-    if (start, end) in parse_map:
-        return parse_map[(start, end)]
-
-    result = Float(tokens[start])
-
-    # add to map
-    parse_map[(start, end)] = result
-
-    return result
+    return Float(tokens[start])
 
 
 def parse_var(tokens, start, end, parse_map):
-    assert type(tokens) == list
-    assert type(start) == int
-    assert start >= 0
-    assert type(end) == int
-    assert end > start
-    assert end <= len(tokens)
-    assert len(tokens[start:end]) == 1
-    assert type(tokens[start]) == str
-    assert tokens[start] not in CONSTANTS
-    assert type(parse_map) == dict
+    try:
+        assert type(tokens) == list
+        assert type(start) == int
+        assert start >= 0
+        assert type(end) == int
+        assert end > start
+        assert end <= len(tokens)
+        assert len(tokens[start:end]) == 1
+        assert type(tokens[start]) == str
+        assert tokens[start] not in CONSTANTS
+        assert type(parse_map) == dict
+    except Exception:
+        return None
 
-    # check memoized
-    if (start, end) in parse_map:
-        return parse_map[(start, end)]
-
-    result = Var(tokens[start])
-
-    # add to map
-    parse_map[(start, end)] = result
-
-    return result
+    return Var(tokens[start])
 
 
 def parse_binop(op, tokens, start, end, parse_map):
-    assert type(tokens) == list
-    assert op in BINOPS
-    assert op in tokens
-    assert type(start) == int
-    assert start >= 0
-    assert type(end) == int
-    assert end > start
-    assert end <= len(tokens)
-    assert len(tokens[start:end]) >= 3
-    assert type(parse_map) == dict
-
-    # check memoized
-    if (start, end) in parse_map:
-        return parse_map[(start, end)]
+    try:
+        assert type(tokens) == list
+        assert op in BINOPS
+        assert op in tokens
+        assert type(start) == int
+        assert start >= 0
+        assert type(end) == int
+        assert end > start
+        assert end <= len(tokens)
+        assert len(tokens[start:end]) >= 3
+        assert type(parse_map) == dict
+    except Exception:
+        return None
 
     op_positions = []
     for i in range(len(tokens)):
@@ -74,122 +70,89 @@ def parse_binop(op, tokens, start, end, parse_map):
                 op_positions.append(i)
 
     if op_positions == []:
-        raise Exception(f"No Op {op} found in {tokens}.")
+        return None
 
     for pos in op_positions:
-        try:
-            left_expr = parse_h(tokens, start, pos, parse_map)
-            try:
-                right_expr = parse_h(tokens, pos + 1, end, parse_map)
-                result = Binop(op, left_expr, right_expr)
+        left_expr = parse_h(tokens, start, pos, parse_map)
+        if left_expr != None:
+            right_expr = parse_h(tokens, pos + 1, end, parse_map)
+            if right_expr != None:
+                return Binop(op, left_expr, right_expr)
 
-                # add to map
-                parse_map[(start, end)] = result
-
-                return result
-            except Exception:
-                pass
-        except Exception:
-            pass
-    else:
-        raise Exception(f"Failed to parse binop {tokens}.")
+    return None
 
 
 def parse_parens(tokens, start, end, parse_map):
-    assert type(tokens) == list
-    assert type(start) == int
-    assert start >= 0
-    assert type(end) == int
-    assert end > start
-    assert end <= len(tokens)
-    assert len(tokens[start:end]) >= 3
-    assert tokens[start] == LEFT_PAREN
-    assert tokens[end - 1] == RIGHT_PAREN
-    assert type(parse_map) == dict
+    try:
+        assert type(tokens) == list
+        assert type(start) == int
+        assert start >= 0
+        assert type(end) == int
+        assert end > start
+        assert end <= len(tokens)
+        assert len(tokens[start:end]) >= 3
+        assert tokens[start] == LEFT_PAREN
+        assert tokens[end - 1] == RIGHT_PAREN
+        assert type(parse_map) == dict
+    except Exception:
+        return None
 
-    # check memoized
-    if (start, end) in parse_map:
-        return parse_map[(start, end)]
-
-    result = parse_h(tokens, start + 1, end - 1, parse_map)
-
-    # add to map
-    parse_map[(start, end)] = result
-
-    return result
+    return parse_h(tokens, start + 1, end - 1, parse_map)
 
 
 def parse_unop(op, tokens, start, end, parse_map):
-    assert type(tokens) == list
-    assert op in UNOPS
-    assert type(start) == int
-    assert start >= 0
-    assert type(end) == int
-    assert end > start
-    assert end <= len(tokens)
-    assert len(tokens[start:end]) >= 2
-    assert tokens[start] == op
-    assert type(parse_map) == dict
-
-    # check memoized
-    if (start, end) in parse_map:
-        return parse_map[(start, end)]
+    try:
+        assert type(tokens) == list
+        assert op in UNOPS
+        assert type(start) == int
+        assert start >= 0
+        assert type(end) == int
+        assert end > start
+        assert end <= len(tokens)
+        assert len(tokens[start:end]) >= 2
+        assert tokens[start] == op
+        assert type(parse_map) == dict
+    except Exception:
+        return None
 
     inner_parse = parse_h(tokens, start + 1, end, parse_map)
-    result = Unop(op, inner_parse)
-
-    # add to map
-    parse_map[(start, end)] = result
-
-    return result
+    return Unop(op, inner_parse)
 
 
 def parse_const(tokens, start, end, parse_map):
-    assert type(tokens) == list
-    assert type(start) == int
-    assert start >= 0
-    assert type(end) == int
-    assert end > start
-    assert end <= len(tokens)
-    assert len(tokens[start:end]) == 1
-    assert type(tokens[start]) == str
-    assert tokens[start] in CONSTANTS
-    assert type(parse_map) == dict
+    try:
+        assert type(tokens) == list
+        assert type(start) == int
+        assert start >= 0
+        assert type(end) == int
+        assert end > start
+        assert end <= len(tokens)
+        assert len(tokens[start:end]) == 1
+        assert type(tokens[start]) == str
+        assert tokens[start] in CONSTANTS
+        assert type(parse_map) == dict
+    except Exception:
+        return None
 
-    # check memoized
-    if (start, end) in parse_map:
-        return parse_map[(start, end)]
-
-    result = Const(tokens[start])
-
-    # add to map
-    parse_map[(start, end)] = result
-
-    return result
+    return Const(tokens[start])
 
 
 def parse_function(tokens, start, end, parse_map):
-    assert type(tokens) == list
-    assert type(start) == int
-    assert start >= 0
-    assert type(end) == int
-    assert end > start
-    assert end <= len(tokens)
-    assert len(tokens[start:end]) >= 2
-    assert tokens[start] in FUNCTIONS
-    assert type(parse_map) == dict
-
-    # check memoized
-    if (start, end) in parse_map:
-        return parse_map[(start, end)]
+    try:
+        assert type(tokens) == list
+        assert type(start) == int
+        assert start >= 0
+        assert type(end) == int
+        assert end > start
+        assert end <= len(tokens)
+        assert len(tokens[start:end]) >= 2
+        assert tokens[start] in FUNCTIONS
+        assert type(parse_map) == dict
+    except Exception:
+        return None
 
     inner_parse = parse_h(tokens, start + 1, end, parse_map)
-    result = Function(tokens[start], inner_parse)
-
-    # add to map
-    parse_map[(start, end)] = result
-
-    return result
+    return Function(tokens[start], inner_parse)
 
 
 def parse_h(tokens, start, end, parse_map):
@@ -205,62 +168,47 @@ def parse_h(tokens, start, end, parse_map):
     if (start, end) in parse_map:
         return parse_map[(start, end)]
 
-    try:
-        result = parse_float(tokens, start, end, parse_map)
-        # add to map
-        parse_map[(start, end)] = result
-        return result
-    except Exception:
-        try:
-            result = parse_const(tokens, start, end, parse_map)
-            # add to map
-            parse_map[(start, end)] = result
-            return result
-        except Exception:
-            try:
-                result = parse_var(tokens, start, end, parse_map)
-                # add to map
-                parse_map[(start, end)] = result
-                return result
-            except Exception:
-                try:
-                    result = parse_parens(tokens, start, end, parse_map)
-                    # add to map
-                    parse_map[(start, end)] = result
-                    return result
-                except Exception:
-                    try:
-                        result = parse_function(tokens, start, end, parse_map)
-                        # add to map
-                        parse_map[(start, end)] = result
-                        return result
-                    except Exception:
-                        try:
-                            for op in UNOPS:
-                                try:
-                                    result = parse_unop(op, tokens, start,
-                                                        end, parse_map)
-                                    # add to map
-                                    parse_map[(start, end)] = result
-                                    return result
-                                except Exception:
-                                    pass
-                            raise Exception()
-                        except Exception:
-                            try:
-                                for op in BINOPS:
-                                    try:
-                                        result = parse_binop(
-                                            op, tokens, start, end, parse_map)
-                                        # add to map
-                                        parse_map[(start, end)] = result
-                                        return result
-                                    except Exception:
-                                        pass
-                                raise Exception()
-                            except Exception:
-                                raise Exception(
-                                    f"Failed to match in Parse: {tokens}")
+    float_res = parse_float(tokens, start, end, parse_map)
+    if float_res != None:
+        parse_map[(start, end)] = float_res
+        return float_res
+
+    const_res = parse_const(tokens, start, end, parse_map)
+    if const_res != None:
+        parse_map[(start, end)] = const_res
+        return const_res
+
+    var_res = parse_var(tokens, start, end, parse_map)
+    if var_res != None:
+        parse_map[(start, end)] = var_res
+        return var_res
+
+    parens_res = parse_parens(tokens, start, end, parse_map)
+    if parens_res != None:
+        parse_map[(start, end)] = parens_res
+        return parens_res
+
+    func_res = parse_function(tokens, start, end, parse_map)
+    if func_res != None:
+        parse_map[(start, end)] = func_res
+        return func_res
+
+    unop_res = None
+    for op in UNOPS:
+        unop_res = parse_unop(op, tokens, start, end, parse_map)
+        if unop_res != None:
+            parse_map[(start, end)] = unop_res
+            return unop_res
+
+    binop_res = None
+    for op in BINOPS:
+        binop_res = parse_binop(op, tokens, start, end, parse_map)
+        if binop_res != None:
+            parse_map[(start, end)] = binop_res
+            return binop_res
+
+    parse_map[(start, end)] = None
+    return None
 
 
 def get_vars(expr):
@@ -291,6 +239,8 @@ def parse(tokens):
 
     parse_map = dict()
     expr = parse_h(tokens, 0, len(tokens), parse_map)
+    if expr == None:
+        raise RuntimeError(f"Failed to parse: {tokens}.")
     if check_single_var(expr):
         return expr
     raise RuntimeError(f"More than 1 variable: {expr}.")
@@ -299,7 +249,7 @@ def parse(tokens):
 def test():
     s = "-6 - -5 + 4 + 3 + 2 + 1 + 0 ^ 3 + x"
     s = "x + (x * x) * x * x * x * x * x * x * x * x * x * x * x * x * x * x * x * x * x * x * x * x * x * x * x"
-    s = "((1 + 2) + 3) + ((1 + 2) + 3) + ((1 + 2) + 3) + ((1 + 2) + 3) + ((1 + 2) + 3)"
+    s = "((1 + 2) + 3) + ((1 + 2) + 3) + ((1 + 2) + 3) + ((1 + 2) + 3) + ((1 + 2) + 3) + ((1 + 2) + 3) + ((1 + 2) + 3) + ((1 + 2) + 3) + ((1 + 2) + 3) + ((1 + 2) + 3) + ((1 + 2) + 3) + ((1 + 2) + 3) + ((1 + 2) + 3) + ((1 + 2) + 3) + ((1 + 2) + 3) + ((1 + 2) + 3) + ((1 + 2) + 3) + ((1 + 2) + 3) + ((1 + 2) + 3) + ((1 + 2) + 3)"
     tokens = lex(s)
     # tokens = [LN, LEFT_PAREN, 4., ADD, 3., RIGHT_PAREN, SUB, LEFT_PAREN,
     #           2., ADD, 5., ADD, 3., ADD, 3., MUL, 2., RIGHT_PAREN]
