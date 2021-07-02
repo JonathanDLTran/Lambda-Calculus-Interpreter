@@ -9,6 +9,12 @@ class AST:
     def is_empty(self):
         return self.sentences == []
 
+    def __eq__(self, value):
+        return super().__eq__(value)
+
+    def __ne__(self, value):
+        return super().__ne__(value)
+
 
 class Expr(object):
     """
@@ -21,6 +27,12 @@ class Expr(object):
 
     def __repr__(self):
         return "This is a abstract expression"
+
+    def __eq__(self, value):
+        return super().__eq__(value)
+
+    def __ne__(self, value):
+        return super().__ne__(value)
 
 
 class IntValue(Expr):
@@ -38,6 +50,14 @@ class IntValue(Expr):
     def __repr__(self):
         return "(IntValue: " + str(self.value) + ")"
 
+    def __eq__(self, value):
+        if type(value) != IntValue:
+            return False
+        return self.value == value.value
+
+    def __ne__(self, value):
+        return not self.__eq__(value)
+
 
 class BoolValue(Expr):
     """
@@ -53,6 +73,14 @@ class BoolValue(Expr):
 
     def __repr__(self):
         return "(BoolValue: " + str(self.value) + ")"
+
+    def __eq__(self, value):
+        if type(value) != BoolValue:
+            return False
+        return self.value == value.value
+
+    def __ne__(self, value):
+        return not self.__eq__(value)
 
 
 class FloatValue(Expr):
@@ -70,6 +98,14 @@ class FloatValue(Expr):
     def __repr__(self):
         return "(FloatValue: " + str(self.value) + ")"
 
+    def __eq__(self, value):
+        if type(value) != FloatValue:
+            return False
+        return self.value == value.value
+
+    def __ne__(self, value):
+        return not self.__eq__(value)
+
 
 class StrValue(Expr):
     """
@@ -86,6 +122,14 @@ class StrValue(Expr):
     def __repr__(self):
         return "(StrValue: " + str(self.value) + ")"
 
+    def __eq__(self, value):
+        if type(value) != StrValue:
+            return False
+        return self.value == value.value
+
+    def __ne__(self, value):
+        return not self.__eq__(value)
+
 
 class VarValue(Expr):
     """
@@ -101,6 +145,14 @@ class VarValue(Expr):
 
     def __repr__(self):
         return "(VarValue: " + str(self.value) + ")"
+
+    def __eq__(self, value):
+        if type(value) != VarValue:
+            return False
+        return self.value == value.value
+
+    def __ne__(self, value):
+        return not self.__eq__(value)
 
 
 class Tuple(Expr):
@@ -122,6 +174,14 @@ class Tuple(Expr):
     def __repr__(self):
         return "(Tuple: (" + ", ".join(list(map(lambda e: str(e), self.exprs))) + "))"
 
+    def __eq__(self, value):
+        if type(value) != Tuple:
+            return False
+        return self.exprs == value.exprs and self.length == value.length
+
+    def __ne__(self, value):
+        return not self.__eq__(value)
+
 
 class List(Expr):
     """
@@ -141,6 +201,14 @@ class List(Expr):
 
     def __repr__(self):
         return "(List: [" + ", ".join(list(map(lambda e: str(e), self.exprs))) + "])"
+
+    def __eq__(self, value):
+        if type(value) != List:
+            return False
+        return self.exprs == value.exprs and self.length == value.length
+
+    def __ne__(self, value):
+        return not self.__eq__(value)
 
 
 class Dict(Expr):
@@ -167,6 +235,14 @@ class Dict(Expr):
     def __repr__(self):
         return "(Dict: {" + ", ".join(list(map(lambda k, v: str(k) + " : " + str(v), self.keys, self.values))) + "})"
 
+    def __eq__(self, value):
+        if type(value) != Dict:
+            return False
+        return self.keys == value.keys and self.values == value.values and self.length == value.length
+
+    def __ne__(self, value):
+        return not self.__eq__(value)
+
 
 class Struct(Expr):
     """
@@ -191,6 +267,14 @@ class Struct(Expr):
 
     def __repr__(self):
         return "(Struct: {|" + ", ".join(list(map(lambda k, v: str(k) + " : " + str(v), self.keys, self.values))) + "|})"
+
+    def __eq__(self, value):
+        if type(value) != Struct:
+            return False
+        return self.keys == value.keys and self.values == value.values and self.length == value.length
+
+    def __ne__(self, value):
+        return not self.__eq__(value)
 
 
 class Bop(Expr):
@@ -222,6 +306,14 @@ class Bop(Expr):
     def __repr__(self):
         return "(BOP: " + str(self.left) + str(self.bop) + str(self.right) + ")"
 
+    def __eq__(self, value):
+        if type(value) != Bop:
+            return False
+        return self.left == value.left and self.right == value.right and self.bop == value.bop
+
+    def __ne__(self, value):
+        return not self.__eq__(value)
+
 
 class Unop(Expr):
     """
@@ -244,6 +336,14 @@ class Unop(Expr):
 
     def __repr__(self):
         return "(UNOP: " + str(self.unop) + str(self.expr) + ")"
+
+    def __eq__(self, value):
+        if type(value) != Unop:
+            return False
+        return self.expr == value.expr and self.unop == value.unop
+
+    def __ne__(self, value):
+        return not self.__eq__(value)
 
 
 class Assign(Expr):
@@ -270,6 +370,14 @@ class Assign(Expr):
 
     def __repr__(self):
         return "(Assign: " + str(self.var) + " := " + str(self.expr) + ")"
+
+    def __eq__(self, value):
+        if type(value) != Assign:
+            return False
+        return self.expr == value.expr and self.var == value.var
+
+    def __ne__(self, value):
+        return not self.__eq__(value)
 
 
 class While(Expr):
@@ -299,6 +407,14 @@ class While(Expr):
 
     def __repr__(self):
         return "(while " + str(self.guard) + " dowhile\n\t" + "\n\t".join(list(map(lambda phrase: str(phrase), self.body))) + "\nendwhile)"
+
+    def __eq__(self, value):
+        if type(value) != While:
+            return False
+        return self.body == value.body and self.guard == value.guard
+
+    def __ne__(self, value):
+        return not self.__eq__(value)
 
 
 class For(Expr):
@@ -335,6 +451,14 @@ class For(Expr):
     def __repr__(self):
         return "(for " + str(self.index) + " from " + str(self.from_int) + " to " + str(self.end_int) + " by " + str(self.by) + " dofor\n\t" + "\n\t".join(list(map(lambda phrase: str(phrase), self.body))) + "\nendfor)"
 
+    def __eq__(self, value):
+        if type(value) != For:
+            return False
+        return self.index == value.index and self.from_int == value.from_int and self.end_int == value.end_int and self.by == value.by and self.body == value.body
+
+    def __ne__(self, value):
+        return not self.__eq__(value)
+
 
 class Function(Expr):
     """
@@ -361,6 +485,14 @@ class Function(Expr):
 
     def __repr__(self):
         return "(fun " + str(self.name) + " " + " ".join(list(map(lambda arg: str(arg), self.args))) + " ->\n\t" + "\n\t".join(list(map(lambda phrase: str(phrase), self.body))) + "\nendfun)"
+
+    def __eq__(self, value):
+        if type(value) != Function:
+            return False
+        return self.name == value.name and self.args == value.args and self.body == value.body
+
+    def __ne__(self, value):
+        return not self.__eq__(value)
 
 
 class IfThenElse(Expr):
@@ -395,6 +527,14 @@ class IfThenElse(Expr):
                 + ")"
                 )
 
+    def __eq__(self, value):
+        if type(value) != IfThenElse:
+            return False
+        return self.if_pair == value.if_pair and self.elif_list == value.elif_list and self.else_body == value.else_body
+
+    def __ne__(self, value):
+        return not self.__eq__(value)
+
 
 class Extern(Expr):
     """
@@ -418,6 +558,14 @@ class Extern(Expr):
 
     def __repr__(self):
         return "(Extern: " + str(self.fun) + "(" + (" ".join(list(map(lambda a: str(a), self.args_list)))) + ")" + ")"
+
+    def __eq__(self, value):
+        if type(value) != Extern:
+            return False
+        return self.fun == value.fun and self.args_list == value.args_list
+
+    def __ne__(self, value):
+        return not self.__eq__(value)
 
 
 class Apply(Expr):
@@ -443,6 +591,14 @@ class Apply(Expr):
     def __repr__(self):
         return "(Apply: " + str(self.fun) + "(" + (" ".join(list(map(lambda a: str(a), self.args_list)))) + ")" + ")"
 
+    def __eq__(self, value):
+        if type(value) != Apply:
+            return False
+        return self.fun == value.fun and self.args_list == value.args_list
+
+    def __ne__(self, value):
+        return not self.__eq__(value)
+
 
 class Return(Expr):
     """
@@ -459,6 +615,14 @@ class Return(Expr):
 
     def __repr__(self):
         return "(Return: " + str(self.body) + ";)"
+
+    def __eq__(self, value):
+        if type(value) != Return:
+            return False
+        return self.body == value.body
+
+    def __ne__(self, value):
+        return not self.__eq__(value)
 
 
 class Ignore(Expr):
@@ -477,6 +641,14 @@ class Ignore(Expr):
     def __repr__(self):
         return "(Ignore: " + str(self.expr) + ";)"
 
+    def __eq__(self, value):
+        if type(value) != Ignore:
+            return False
+        return self.expr == value.expr
+
+    def __ne__(self, value):
+        return not self.__eq__(value)
+
 
 class Program(Expr):
     """
@@ -492,3 +664,11 @@ class Program(Expr):
 
     def __repr__(self):
         return "(Program:\n" + "\n".join(list(map(lambda phrase: str(phrase), self.phrases))) + "\n)"
+
+    def __eq__(self, value):
+        if type(value) != Program:
+            return False
+        return self.phrases == value.phrases
+
+    def __ne__(self, value):
+        return not self.__eq__(value)
