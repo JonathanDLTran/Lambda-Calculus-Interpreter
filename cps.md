@@ -54,7 +54,38 @@ is what happened before. Evaluation order is made explicit. The function is esse
 unraveled, with the inner most compuation occuring first.
 
 As a simple example, we can now generalize the computation previously, to any string
-of airthmetic operations.
+of arithmetic operations. For instance, for any string of arithmetic operations and values,
+we can translate it as:
+```
+k = \x.x
+k0 = \a.k a
+k1 = \b.k0 (...)
+k2 = \c.k1 (...)
+k3 = \d.k2 (...)
+....
+```
+And quite obviously the pattern generalizes.
+With assignment, one can also pass not just the value but also a context as well.
+We define a translation for statement level CPS and also expression level CPS.
+At the statement level, CPS passes around a context as a value. At the expression level,
+CPS passes around a value. 
+So for example
+```
+let x = 3
+let y = 4
+x + y
+```
+becomes
+```
+k0 = \c0.c0
+ke = \v c k. k (v + c1[y])
+k1 = \c1 k0. k0 (ke c1[x] c1 \x.x)
+k2 = \c2 k1. k1 (c2[y] = 4; c2)
+k3 = \c3 k2. k2 (c3[x] = 3; c3)
+```
+assuming assignment generates the same context. Then the computation can be kickstarted
+by calling k3 on an empty context. Note that ke is then the expression translated
+as a separate part of the computation and embedded into k1.
 
 As an aside, it becomes interesting, now, to consider translating a core subset
 of scheme into continuation passing form, and then seeing how it behaves. Furthermore,
