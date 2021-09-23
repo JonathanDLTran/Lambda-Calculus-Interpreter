@@ -268,4 +268,9 @@ let rec length lst acc k =
 ```
 Simple!
 
+And an observation: Notice that in CPS recursion, we only go down the stack,
+never up. Because going up means we return back to the caller, which is antithecal
+to CPS. Rather than returning, we call something else: the continuation, which represents
+the unwinding of the stack!!
+
 Hopefully, this motivates the translation of the lambda calculus to CPS.
