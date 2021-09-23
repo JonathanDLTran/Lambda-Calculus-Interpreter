@@ -234,8 +234,10 @@ Here's another way to read into a recursive function in cps:
 means intuitively calculate f on x recursively in the normal sense, ignoring 
 all CPS. Then apply k to this recusive calculation. Now it makes absoluate sense
 why the recusive case is written ```len t (fun len -> k (1 + len))```.
-This is precisly because we calculate len t, ignoring CPS, then we apply the 
-continuation adding 1 to it, and then apply k.
+This is precisly because we calculate ```len t```, ignoring CPS, then we apply the 
+continuation adding 1 to it, and then apply k. The new continuation captures what 
+we should do at the end, and the end is at the bottom of the stack, where we apply
+k to 0.
 
 We can easily generalize the above procedure to maps, folds, and other recursive
 functions. The above even works for mutual recursion.
