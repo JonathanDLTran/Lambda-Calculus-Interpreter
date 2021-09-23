@@ -101,6 +101,37 @@ Compare this to the standard lambda calculus grammar:
 v ::= \x.e 
 e ::= x | e0 e1
 
-Now we have 
+Now we have ...
 
 
+
+Here's the details for call/cc, directly taken from Wikipedia. 
+(call/cc f) is embedded in some expression. The result is f applied to the 
+continuation of that expression.
+For example, suppose we have (e1 (call/cc f)).
+The continuation of the (call/cc f) expression is (lambda (c) (e1 c)), since
+if we substitute (call/cc f) for c, we get (e1 (call/cc f)).
+The result of call/cc is then (f (lambda (c) (e1 c))).
+Next, suppose we had ((call/cc f) e2). The continuation of e2 is (lambda (c) (c e2)), 
+since this would apply (call/cc f) to e2 and we have the result of call/cc as (f (lambda (c) (c e2))).
+
+Consider the example:
+(define (f return)
+    (return 2)
+    3)
+
+and we can try
+(display (f (lambda (x) x)))
+which prints to output the value 3. 
+
+But if we try 
+(display (call/cc f))
+We see that the form is (e1 (call/cc f))
+and so we have the result will be (f (lambda (c) (display c)))
+which reduces to 
+(((lambda (c) (display c)) 2) 
+    3)
+which further reduces to 
+((display 2)
+    3)
+which prints out 2 to standard output.
