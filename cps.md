@@ -240,4 +240,32 @@ continuation adding 1 to it, and then apply k.
 We can easily generalize the above procedure to maps, folds, and other recursive
 functions. The above even works for mutual recursion.
 
+Let us consider another explanation. The continuation represents the computation 
+**after** the current computation, which in our case, is the recursive function.
+
+Hence, we should be applying the computation after adding 1 to length t. But this
+would mean we should not apply the continuation to the base case. To avoid this issue,
+we instead move the add 1 to length into the continuation itself, allowing us to 
+apply the continuation in the base case.
+
+Finally, note that continuation passing style works really well with tail call
+optimization.
+
+Consider:
+```
+let rec length lst acc = 
+    match lst with 
+    | [] -> acc 
+    | _ :: t -> length t (1 + acc)
+```
+and notice that there is no computation to be done after recursing on t.
+Therefore, nothing needs to be added to the continuation. Here is the CPS form:
+```
+let rec length lst acc k = 
+    match lst with 
+    | [] -> k acc 
+    | _ :: t -> length t (1 + acc) k
+```
+Simple!
+
 Hopefully, this motivates the translation of the lambda calculus to CPS.
