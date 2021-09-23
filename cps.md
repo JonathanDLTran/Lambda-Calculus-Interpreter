@@ -242,6 +242,31 @@ k to 0.
 We can easily generalize the above procedure to maps, folds, and other recursive
 functions. The above even works for mutual recursion.
 
+Here's an example of converting mutual recursion to CPS:
+The pre-CPS version is shown here.
+```
+let rec even n = 
+    if n = 0 then true 
+    else odd (n - 1)
+
+let rec odd n = 
+    if n = 0 then false 
+    else even (n - 1)
+```
+Here's the translated CPS version:
+```
+let rec even n k = 
+    if n = 0 then k true 
+    else odd (n - 1) k 
+
+let rec odd n k = 
+    if n = 0 then k false 
+    else even (n - 1) k
+```
+which admittedly, is a bit simpler than the work we had to do before, 
+because there is no work after the recursion.
+
+
 Let us consider another explanation. The continuation represents the computation 
 **after** the current computation, which in our case, is the recursive function.
 
