@@ -1,9 +1,13 @@
-9/13/2021
+# Introduction
 
 This is my attempt to shore up some understanding on CPS. I feel that it is an 
 important basic concept that I need to work on, so I am doing some work with it here.
 
-The notes are CS6110 Spring 2013 that Professor Myers taught.
+The notes are CS6110 Spring 2013 that Professor Myers taught, as well as CS 4110.
+
+## Content
+
+### Motivation for Continuation Passing Form
 
 Consider the expression:
 ```
@@ -92,65 +96,7 @@ of scheme into continuation passing form, and then seeing how it behaves. Furthe
 it would be nice to add in the call/cc operator to this core subset, and also
 add in the backtracking operator.
 
-Let me define the grammar:
-
-v ::= x | \x1 ... xn.e
-e ::= v0 v1 v2 ... vn
-
-Compare this to the standard lambda calculus grammar:
-v ::= \x.e 
-e ::= x | e0 e1
-
-Now we have ...
-
-### An introduction to Call/CC
-
-Here's the details for call/cc, directly taken from Wikipedia. 
-```(call/cc f)``` is embedded in some expression. The result is f applied to the 
-continuation of that expression.
-For example, suppose we have ```(e1 (call/cc f))```.
-The continuation of the ```(call/cc f)``` expression is ```(lambda (c) (e1 c))```, since
-if we substitute ```(call/cc f)``` for c, we get ```(e1 (call/cc f))```.
-The result of call/cc is then ```(f (lambda (c) (e1 c)))```.
-Next, suppose we had ```((call/cc f) e2)```. The continuation of e2 is ```(lambda (c) (c e2))```, 
-since this would apply ```(call/cc f)``` to e2 and we have the result of call/cc as ```(f (lambda (c) (c e2)))```.
-
-Consider the example:
-```
-(define (f return)
-    (return 2)
-    3)
-```
-
-and we can try
-```
-(display (f (lambda (x) x)))
-```
-which prints to output the value 3. 
-
-But if we try 
-```
-(display (call/cc f))
-```
-We see that the form is 
-```
-(e1 (call/cc f))
-```
-and so we have the result will be 
-```
-(f (lambda (c) (display c)))
-```
-which reduces to 
-```
-(((lambda (c) (display c)) 2) 
-    3)
-```
-which further reduces to 
-```
-((display 2)
-    3)
-```
-which prints out 2 to standard output.
+We start this journey by understanding CPS via translations from the lambda calculus.
 
 ### Translating Simple Expressions to CPS
 
@@ -385,7 +331,7 @@ Next, consider the abstraction.
 Notice that ```\x.e``` is a value. Hence the application of k to the abstraction.
 Inside is a little tricky. We keep x, the variable, but we also introduce the 
 continuation k' that will be passed in for after evaluation of e, which is to be 
-used when we apply some expression to this abstraction. Notice we do ```[[e]] k'``.
+used when we apply some expression to this abstraction. Notice we do ```[[e]] k'```.
 which is to signal we must evaluate e to a value, before applying k' to it.
 
 Finally, consider the application.
@@ -400,8 +346,72 @@ what the translation says.
 
 ### An Interesting Problem Involving CPS
 
-Can you use fold left to implement fold right?
+Can you use fold left to implement fold right? Or vice versa?
+
+Use the definitions of foldl and foldr, written in OCaml.
+```
+let rec foldl lst f acc = 
+    match lst with 
+    | [] -> acc 
+    | h :: t -> foldl t f (f h acc)
+```
+and 
+```
+let rec foldr lst f acc = 
+    match lst with 
+    | [] -> acc 
+    | h :: t -> f h (foldr t f acc)
+```
 
 ### Translating a subset of Scheme to CPS
+
+### An introduction to Call/CC
+
+Here's the details for call/cc, directly taken from Wikipedia. 
+```(call/cc f)``` is embedded in some expression. The result is f applied to the 
+continuation of that expression.
+For example, suppose we have ```(e1 (call/cc f))```.
+The continuation of the ```(call/cc f)``` expression is ```(lambda (c) (e1 c))```, since
+if we substitute ```(call/cc f)``` for c, we get ```(e1 (call/cc f))```.
+The result of call/cc is then ```(f (lambda (c) (e1 c)))```.
+Next, suppose we had ```((call/cc f) e2)```. The continuation of e2 is ```(lambda (c) (c e2))```, 
+since this would apply ```(call/cc f)``` to e2 and we have the result of call/cc as ```(f (lambda (c) (c e2)))```.
+
+Consider the example:
+```
+(define (f return)
+    (return 2)
+    3)
+```
+
+and we can try
+```
+(display (f (lambda (x) x)))
+```
+which prints to output the value 3. 
+
+But if we try 
+```
+(display (call/cc f))
+```
+We see that the form is 
+```
+(e1 (call/cc f))
+```
+and so we have the result will be 
+```
+(f (lambda (c) (display c)))
+```
+which reduces to 
+```
+(((lambda (c) (display c)) 2) 
+    3)
+```
+which further reduces to 
+```
+((display 2)
+    3)
+```
+which prints out 2 to standard output.
 
 ### Implementing call/cc
