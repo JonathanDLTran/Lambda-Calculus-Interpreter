@@ -356,34 +356,47 @@ we should just let k take the value v. A better way of putting this is that
 
 ### Translating the Lambda Calculus to CPS
 
-With this, we can try to motivate the translation of the lambda calculus to CPS.
+With the above information, we can try to motivate the translation of the CBV lambda calculus to CPS.
 
 This is the standard lambda calculus grammar:
-e ::= x | \x.e  | e0 e1
+```e ::= x | \x.e  | e0 e1```
+
+Throughout, we assume the standard CBV semantics.
 
 We will formulate the translation in the following manner:
-[[e]] k is defined as \k. ...
+``[[e]] k`` is defined as ```\k. ...```. We further require that every expression
+is paired with a continuation that feeds into it, and that every expression ends
+computation by sending its value out onto a continuation.
 
 To begin the translation, consider the variable case.
 
-[[x]] k = k x 
+```[[x]] k = k x ```
 
-This is simple mostly because single variables cannot do much in the lambda calculus.
+The translation is like this because in CBV, bound variables have expressions 
+substituted into them. Substitution only occurs under evaluation of application.
+Therefore, the expression was an argument. But in CBV semantics, arguments are
+evaluated to values before substitution. So the expression substituted for x 
+is a value. Thus, we apply the continuation k to the value.
 
 Next, consider the abstraction.
 
-[[\x.e]] k = ??
+```[[\x.e]] k = k (\x. \k'. [[e]] k')```
 
-Suppose the top level term is an abstraction. We recall that k is what is to
-happen next after the computation. Note that an abstraction is a value so the computation
-is complete at the present. 
+Notice that ```\x.e``` is a value. Hence the application of k to the abstraction.
+Inside is a little tricky. We keep x, the variable, but we also introduce the 
+continuation k' that will be passed in for after evaluation of e, which is to be 
+used when we apply some expression to this abstraction. Notice we do ```[[e]] k'``.
+which is to signal we must evaluate e to a value, before applying k' to it.
 
 Finally, consider the application.
 
-[[e0 e1]] k = ??
+```[[e0 e1]] k = [[e0]](\f. [[e1]] (\v. f v k))```
 
-In the application, we first evaluate e0 to a function, then evaluate e1,
-and then substitute e1 in e0. After all that, we would apply k.
+The translation of this is similar in concept to the translation of addition, keeping in mind the evaluation order of applications. 
+
+In application, we first evaluate e0 to a function f, then evaluate e1 to an argument v,
+and then substitute e1 in e0. After all that, we would apply k. This is literally
+what the translation says. 
 
 ### Translating a subset of Scheme to CPS
 
