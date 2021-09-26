@@ -103,7 +103,7 @@ e ::= x | e0 e1
 
 Now we have ...
 
-
+### Call/CC
 
 Here's the details for call/cc, directly taken from Wikipedia. 
 ```(call/cc f)``` is embedded in some expression. The result is f applied to the 
@@ -152,7 +152,7 @@ which further reduces to
 ```
 which prints out 2 to standard output.
 
-CPS and recursion: 
+### CPS and recursion 
 Here's an example of CPS and recursion.
 Consider the length function for a list in OCaml.
 ```
@@ -239,6 +239,19 @@ continuation adding 1 to it, and then apply k. The new continuation captures wha
 we should do at the end, and the end is at the bottom of the stack, where we apply
 k to 0.
 
+Let us consider another explanation. The continuation represents the computation 
+**after** the current computation, which in our case, is the recursive function.
+
+Hence, we should be applying the computation after adding 1 to length t. But this
+would mean we should not apply the continuation to the base case. To avoid this issue,
+we instead move the add 1 to length into the continuation itself, allowing us to 
+apply the continuation in the base case.
+
+And a related observation: Notice that in CPS recursion, we only go down the stack,
+never up. Because going up means we return back to the caller, which is antithecal
+to CPS. Rather than returning, we call something else: the continuation, which represents
+the unwinding of the stack!!
+
 We can easily generalize the above procedure to maps, folds, and other recursive
 functions. The above even works for mutual recursion.
 
@@ -266,15 +279,6 @@ let rec odd n k =
 which admittedly, is a bit simpler than the work we had to do before, 
 because there is no work after the recursion.
 
-
-Let us consider another explanation. The continuation represents the computation 
-**after** the current computation, which in our case, is the recursive function.
-
-Hence, we should be applying the computation after adding 1 to length t. But this
-would mean we should not apply the continuation to the base case. To avoid this issue,
-we instead move the add 1 to length into the continuation itself, allowing us to 
-apply the continuation in the base case.
-
 Finally, note that continuation passing style works really well with tail call
 optimization.
 
@@ -295,9 +299,36 @@ let rec length lst acc k =
 ```
 Simple!
 
-And an observation: Notice that in CPS recursion, we only go down the stack,
-never up. Because going up means we return back to the caller, which is antithecal
-to CPS. Rather than returning, we call something else: the continuation, which represents
-the unwinding of the stack!!
+### Translating Simple Expressions to CPS
 
-Hopefully, this motivates the translation of the lambda calculus to CPS.
+### Translating the Lambda Calculus to CPS
+
+With this, we can try to motivate the translation of the lambda calculus to CPS.
+
+This is the standard lambda calculus grammar:
+e ::= x | \x.e  | e0 e1
+
+We will formulate the translation in the following manner:
+[[e]] k is defined as \k. ...
+
+To begin the translation, consider the variable case.
+
+[[x]] k = k x 
+
+This is simple mostly because single variables cannot do much in the lambda calculus.
+
+Next, consider the abstraction.
+
+[[\x.e]] k = ??
+
+Suppose the top level term is an abstraction. We recall that k is what is to
+happen next after the computation. Note that an abstraction is a value so the computation
+is complete at the present. 
+
+Finally, consider the application.
+
+[[e0 e1]] k = ??
+
+In the application, we first evaluate e0 to a function, then evaluate e1,
+and then substitute e1 in e0. After all that, we would apply k.
+
