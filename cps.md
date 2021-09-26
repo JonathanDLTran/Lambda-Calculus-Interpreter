@@ -152,6 +152,60 @@ which further reduces to
 ```
 which prints out 2 to standard output.
 
+### Translating Simple Expressions to CPS
+
+To get a hang with using CPS, let's try translating simple expressions
+in direct style to CPS. 
+
+For instance, consider an integer value ```v```. What is its CPS translation?
+It should just be ```k v```, for the value has no computation in it, so instead
+of "returning" the value, we send it off to the continuation. In fact, we can generalize,
+and see that for any value, no computation is needed, so we can just let the continuation
+use it. 
+
+Now let's consider 2 integer expressions being added together: ```e0 + e1```.
+The translation of this to CPS should preserve the following order of evaluation:
+evaluate e0 to a value v0, evaluate e1 to a value v1, then add v0 and v1 together 
+to get v, and finally apply k to v.
+
+We can incrementally develop a translation for this addition expression. Define
+```[[e]] k``` to be a translation of e that accepts a continuation k to be applied
+on e, after e's value is computed to a value. In other words, ```[[e]] = \k. ...```. 
+
+Since we want e0 to evaluate first, consider ```[[e0]]```, which is a function that
+takes in a continuation k. What is the continuation? Well, naturally, it should take in 
+the value v0, which is what e0 reduces to. Next, according to our ordering we compute
+e1, so the function's body should begin by evaluating ```[[e1]]```. Finally, ```[[e1]]``
+needs a continuation. This continuation takes the value v1, and adds it with v0, with the sum called v. Then it dumps v in k.
+
+This is what the translation looks like:
+```[[e0 + e1]] k = [[e0]] (\v0. [[e1]] (\v1. k (v0 + v1)))```
+
+Not very compact. But easy to understand what is happening. CPS tells us to:
+
+1. Compute e0 to a value v0.
+2. Compute e1 to a value v1
+3. Add v0 and v1 to get v
+4. Do not return v, but instead let k take v.
+
+The translation is simple, concise and intuitively makes sense. 
+
+In general, for CPS translation, keep the high level idea of what a continuation is.
+The continuation is a function that represents what will happen next, after your 
+current expression is computed down to a value.
+
+### A Few Key Points About CPS
+
+In CPS, one question one might have is when should we have 
+```[[e]] k``` versus ```k [[e]]```.
+
+The answer is you should use ```[[e]] k```  to intuitively represent the idea of 
+calculate e to a value v, then apply k after. This works when e is not yet a value.
+
+```k [[e]]``` on the other hand represents the idea that e is really a value v, and 
+we should just let k take the value v. A better way of putting this is that 
+```k [[e]]``` never should occur, instead only ```k v``` is legal.
+
 ### Translating Recursive Functions to CPS
 
 Here's an example of CPS and recursion.
@@ -300,60 +354,6 @@ let rec length lst acc k =
 ```
 Simple!
 
-### Translating Simple Expressions to CPS
-
-To further get a hang with using CPS, let's try translating simple expressions
-in direct style to CPS. 
-
-For instance, consider an integer value ```v```. What is its CPS translation?
-It should just be ```k v```, for the value has no computation in it, so instead
-of "returning" the value, we send it off to the continuation. In fact, we can generalize,
-and see that for any value, no computation is needed, so we can just let the continuation
-use it. 
-
-Now let's consider 2 integer expressions being added together: ```e0 + e1```.
-The translation of this to CPS should preserve the following order of evaluation:
-evaluate e0 to a value v0, evaluate e1 to a value v1, then add v0 and v1 together 
-to get v, and finally apply k to v.
-
-We can incrementally develop a translation for this addition expression. Define
-```[[e]] k``` to be a translation of e that accepts a continuation k to be applied
-on e, after e's value is computed to a value. In other words, ```[[e]] = \k. ...```. 
-
-Since we want e0 to evaluate first, consider ```[[e0]]```, which is a function that
-takes in a continuation k. What is the continuation? Well, naturally, it should take in 
-the value v0, which is what e0 reduces to. Next, according to our ordering we compute
-e1, so the function's body should begin by evaluating ```[[e1]]```. Finally, ```[[e1]]``
-needs a continuation. This continuation takes the value v1, and adds it with v0, with the sum called v. Then it dumps v in k.
-
-This is what the translation looks like:
-```[[e0 + e1]] k = [[e0]] (\v0. [[e1]] (\v1. k (v0 + v1)))```
-
-Not very compact. But easy to understand what is happening. CPS tells us to:
-
-1. Compute e0 to a value v0.
-2. Compute e1 to a value v1
-3. Add v0 and v1 to get v
-4. Do not return v, but instead let k take v.
-
-The translation is simple, concise and intuitively makes sense. 
-
-In general, for CPS translation, keep the high level idea of what a continuation is.
-The continuation is a function that represents what will happen next, after your 
-current expression is computed down to a value.
-
-### A Few Key Points About CPS
-
-In CPS, one question one might have is when should we have 
-```[[e]] k``` versus ```k [[e]]```.
-
-The answer is you should use ```[[e]] k```  to intuitively represent the idea of 
-calculate e to a value v, then apply k after. This works when e is not yet a value.
-
-```k [[e]]``` on the other hand represents the idea that e is really a value v, and 
-we should just let k take the value v. A better way of putting this is that 
-```k [[e]]``` never should occur, instead only ```k v``` is legal.
-
 ### Translating the Lambda Calculus to CPS
 
 With the above information, we can try to motivate the translation of the CBV lambda calculus to CPS.
@@ -397,6 +397,10 @@ The translation of this is similar in concept to the translation of addition, ke
 In application, we first evaluate e0 to a function f, then evaluate e1 to an argument v,
 and then substitute e1 in e0. After all that, we would apply k. This is literally
 what the translation says. 
+
+### An Interesting Problem Involving CPS
+
+Can you use fold left to implement fold right?
 
 ### Translating a subset of Scheme to CPS
 
