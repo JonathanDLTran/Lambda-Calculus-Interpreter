@@ -103,7 +103,7 @@ e ::= x | e0 e1
 
 Now we have ...
 
-### Call/CC
+### An introduction to Call/CC
 
 Here's the details for call/cc, directly taken from Wikipedia. 
 ```(call/cc f)``` is embedded in some expression. The result is f applied to the 
@@ -152,7 +152,8 @@ which further reduces to
 ```
 which prints out 2 to standard output.
 
-### CPS and recursion 
+### Translating Recursive Functions to CPS
+
 Here's an example of CPS and recursion.
 Consider the length function for a list in OCaml.
 ```
@@ -301,6 +302,50 @@ Simple!
 
 ### Translating Simple Expressions to CPS
 
+To further get a hang with using CPS, let's try translating simple expressions
+in direct style to CPS. 
+
+For instance, consider an integer value ```v```. What is its CPS translation?
+It should just be ```k v```, for the value has no computation in it, so instead
+of "returning" the value, we send it off to the continuation. In fact, we can generalize,
+and see that for any value, no computation is needed, so we can just let the continuation
+use it. 
+
+Now let's consider 2 integer expressions being added together: ```e0 + e1```.
+The translation of this to CPS should preserve the following order of evaluation:
+evaluate e0 to a value v0, evaluate e1 to a value v1, then add v0 and v1 together 
+to get v, and finally apply k to v.
+
+We can incrementally develop a translation for this addition expression. Define
+```[[e]] k``` to be a translation of e that accepts a continuation k to be applied
+on e, after e's value is computed to a value. In other words, ```[[e]] = \k. ...```. 
+
+Since we want e0 to evaluate first, consider ```[[e0]]```, which is a function that
+takes in a continuation k. What is the continuation? Well, naturally, it should take in 
+the value v0, which is what e0 reduces to. Next, according to our ordering we compute
+e1, so the function's body should begin by evaluating ```[[e1]]```. Finally, ```[[e1]]``
+needs a continuation. This continuation takes the value v1, and adds it with v0, with the sum called v. Then it dumps v in k.
+
+This is what the translation looks like:
+```[[e0 + e1]] k = [[e0]] (\v0. [[e1]] (\v1. k (v0 + v1)))```
+
+Not very compact. But easy to understand what is happening. CPS tells us to:
+
+1. Compute e0 to a value v0.
+2. Compute e1 to a value v1
+3. Add v0 and v1 to get v
+4. Do not return v, but instead let k take v.
+
+The translation is simple, concise and intuitively makes sense. 
+
+In general, for CPS translation, keep the high level idea of what a continuation is.
+The continuation is a function that represents what will happen next, after your 
+current expression is computed down to a value.
+
+### A Few Key Points About CPS
+
+e k vs k e
+
 ### Translating the Lambda Calculus to CPS
 
 With this, we can try to motivate the translation of the lambda calculus to CPS.
@@ -332,3 +377,6 @@ Finally, consider the application.
 In the application, we first evaluate e0 to a function, then evaluate e1,
 and then substitute e1 in e0. After all that, we would apply k.
 
+### Translating a subset of Scheme to CPS
+
+### Implementing call/cc
