@@ -344,7 +344,15 @@ current expression is computed down to a value.
 
 ### A Few Key Points About CPS
 
-e k vs k e
+In CPS, one question one might have is when should we have 
+```[[e]] k``` versus ```k [[e]]```.
+
+The answer is you should use ```[[e]] k```  to intuitively represent the idea of 
+calculate e to a value v, then apply k after. This works when e is not yet a value.
+
+```k [[e]]``` on the other hand represents the idea that e is really a value v, and 
+we should just let k take the value v. A better way of putting this is that 
+```k [[e]]``` never should occur, instead only ```k v``` is legal.
 
 ### Translating the Lambda Calculus to CPS
 
