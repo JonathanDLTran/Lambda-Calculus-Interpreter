@@ -363,6 +363,49 @@ let rec foldr lst f acc =
     | h :: t -> f h (foldr t f acc)
 ```
 
+As an aside, here is a cps version of foldr:
+```
+let rec foldr lst f acc k = 
+    match lst with 
+    | [] -> k acc 
+    | h :: t -> foldr t f acc (\v. k (f h v))
+```
+which was translated using the exact same ideas that we in the previous sections,
+notably that ```foldr t f acc``` needs to be reduced to a value first,
+and then after, the continuation should take the value, apply f to the head and the value,
+and then throw that value to k.
+
+Notice this translation is tail call optimized! Nothing is done on the stack after
+recursion, because instead of returning, we call another function: k.
+
+After the aside, the solution becomes possible to see. As a strategy, we
+compare the CPS form of foldr and the direct style foldl function, and jotice 
+the code is almost identifical. The only difference is we cannot have
+k acc in the foldl function, unlike in the foldr function. Hence, we will have
+to throw in acc as an argument at the end. 
+
+Here's the solution:
+We match ```(f' h acc)``` with ```(\v. k (f h v)``` in the following way:
+Let ```f' = fun h -> fun k -> fun foldr_val -> k (f h foldr_val)```
+and we see that ```(f' h acc)``` becomes ```fun foldr_val -> k (f h foldr_val)```
+which exactly matches ```(\v. k (f h v)``` from foldr's CPS form. 
+
+Next, for parament named acc, which is now the continuation we pass in the identity, ```fun x -> x```.
+Finally, we apply the foldl to the old acc. 
+
+Written out, we have equationally:
+```
+foldr lst f acc = (foldl lst (fun h -> fun k -> fun v -> k (f h v)) (fun x -> x)) acc
+```
+
+The power is that now, we can change control flow to be harnessed in the way we want
+it to be, by always passing to another function in the order we want. This is why
+continuations are so useful.
+
+As an aside, this solution feels like foldl has been hijacked to make it do foldr's bidding.
+I wonder if in general, code could be hijacked in a similar way to act in different ways,
+by passing in well-crafted continuation arguments, a la CS3410 stack overflow style.
+
 ### Translating a subset of Scheme to CPS
 
 ### An introduction to Call/CC
