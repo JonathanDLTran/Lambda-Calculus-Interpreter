@@ -406,6 +406,12 @@ Wow! And we have the interpretation for this as we construct a large continuatio
 the way down the stack, and then at the top, we give the value to the continuation 
 to kick start the computation.
 
+Perhaps one reason these 2 equations are true is because, intuitively, foldl and foldr
+do the same thing, just in different directions. If we reverse the direction of traversal,
+say via continuation passing style, we should get the dual of the operator. Reversing left gets right and reversing right gets left. And the reversal should be agnostic to the direction:
+changing from left to right should be the same as changing from right to left. Hence the 
+duality and symmetry in the above equations.
+
 The power is that now, we can change control flow to be harnessed in the way we want
 it to be, by always passing to another function in the order we want. This is why
 continuations are so useful.
