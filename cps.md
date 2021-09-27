@@ -398,6 +398,14 @@ Written out, we have equationally:
 foldr lst f acc = (foldl lst (fun h -> fun k -> fun v -> k (f h v)) (fun x -> x)) acc
 ```
 
+Finally, we have a surprise:
+```
+foldl lst f acc = (foldr lst (fun h -> fun k -> fun v -> k (f h v)) (fun x -> x)) acc
+```
+Wow! And we have the interpretation for this as we construct a large continuation on 
+the way down the stack, and then at the top, we give the value to the continuation 
+to kick start the computation.
+
 The power is that now, we can change control flow to be harnessed in the way we want
 it to be, by always passing to another function in the order we want. This is why
 continuations are so useful.
