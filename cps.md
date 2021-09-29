@@ -424,8 +424,10 @@ by passing in well-crafted continuation arguments, a la CS3410 stack overflow st
 
 Another interesting case study is to try to convert an interpreter into CPS.
 
-Consider the not-so interesting language:
-e ::= n | x | e1 + e2 | if e0 then e1 else e2
+Consider the not-so interesting imperativw language:
+```
+e ::= n | x | e1 + e2 | e1 < e2 | e1 = e2
+```
 
 We can write the interpreter in direct style in OCaml:
 ```
@@ -433,41 +435,90 @@ type expr =
     | Int of int
     | Var of string
     | Add of expr * expr
-    | IfThenElse of expr * expr * expr
+    | Lt of expr * expr 
+    | Eq of expr * expr
 
 let rec eval e ctx = 
     match e with 
     | Int i -> i 
     | Var x -> List.find_assoc ctx x 
     | Add(e1, e2) -> eval_add e1 e2 ctx
-    | IfThenElse(e0, e1, e2) -> eval_ifthenelse e0 e1 e2 ctx
+    | Lt(e1, e2) -> eval_lt e1 e2 ctx
+    | Eq(e1, e2) -> eval_eq e1 e2 ctx
 
 and eval_add e1 e2 ctx = 
     (eval e1 ctx) + (eval e2 ctx)
 
-and eval_ifthenelse e0 e1 e2 ctx = 
-    if eval e0 ctx = 0 then eval e1 ctx else eval e2 ctx
+and eval_lt e1 e2 ctx = 
+    if eval e1 ctx < eval e2 ctx then 1 else 0
+
+and eval_eq e1 e2 ctx = 
+    if eval e1 ctx = eval e2 ctx then 1 else 0
 ```
+
 Following this, we can convert this to CPS
+
 ```
 type expr = 
     | Int of int
     | Var of string
     | Add of expr * expr
-    | IfThenElse of expr * expr * expr
+    | Lt of expr * expr 
+    | Eq of expr * expr
 
 let rec eval e ctx k = 
     match e with 
     | Int i -> k i ctx 
     | Var x -> k (List.find_assoc ctx x) ctx
-    | Add(e1, e2) -> eval_add e1 e2 ctx (fun v -> fun ctx -> k v ctx)
-    | IfThenElse(e0, e1, e2) -> eval_ifthenelse e0 e1 e2 ctx (fun v -> fun ctx -> k v ctx)
+    | Add(e1, e2) -> eval_add e1 e2 ctx (fun v -> k v ctx)
+    | Lt(e1, e2) -> eval_lt e1 e2 ctx (fun v -> k v ctx)
+    | Eq(e1, e2) -> eval_eq e1 e2 ctx (fun v -> k v ctx)
 
 and eval_add e1 e2 ctx k = 
-    eval e1 ctx (fun v1 -> -> eval e2 ctx (fun v2 -> k (v1 + v2) ctx))
+    eval e1 ctx (fun v1 -> eval e2 ctx (fun v2 -> k (v1 + v2) ctx))
 
-and eval_ifthenelse e0 e1 e2 ctx k = 
-    eval e0 ctx (fun g -> if g then eval e1 ctx k else eval e2 ctx k)
+and eval_lt e1 e2 ctx k = 
+    eval e1 ctx (fun v1 -> eval e2 ctx (fun v2 -> (if v1 < v2 then 1 else 0) ctx))
+
+and eval_eq e1 e2 ctx k = 
+    eval e1 ctx (fun v1 -> eval e2 ctx (fun v2 -> (if v1 = v2 then 1 else 0) ctx))
+```
+
+If we want to add commands in our language to change stores, we might change
+the grammar, and also the functions.
+
+For instance, let us add commands:
+
+```
+c ::= x := e | c1; c2 | while e do c | skip | if e then c1 else c2
+```
+
+And now define eval_com as:
+```
+type com = 
+    | Assign of string * expr
+    | Seq of com * com 
+    | While of expr * com
+    | IfThenElse of expr * com * com
+
+let rec eval_com c ctx k = 
+    match c with 
+    | Assign(x, e) -> eval_assign x e ctx (fun sigma -> k sigma)
+    | Seq(c1, c2) -> eval_seq c1 c2 ctx (fun sigma -> k sigma)
+    | While(e, c) -> eval_while e c ctx (fun sigma -> k sigma) 
+    | IfThenElse(e, c1, c2) -> eval_ifthenelse e c1 c2 ctx (fun sigma -> k sigma)
+
+and eval_assign x e ctx k = 
+    eval e ctx (fun v -> (x, v) :: ctx (fun sigma -> k sigma))
+
+and eval_seq c1 c2 ctx k = 
+    eval_com c1 ctx (fun sigma1 -> eval_com c2 sigma1 (fun sigma2 -> k sigma2))
+
+and eval_while e c ctx k = 
+    eval e ctx (fun g -> if g = 1 then eval_com c ctx (fun sigma -> eval_while e c sigma k) else k ctx)
+
+and eval_ifthenelse e c1 c2 ctx k = 
+    eval e ctx (fun g -> if g = 1 then eval_com e1 ctx k else eval_com e2 ctx k)
 ```
 
 ### Translating a subset of Scheme to CPS
