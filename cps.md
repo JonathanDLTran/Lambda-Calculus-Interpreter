@@ -420,6 +420,56 @@ As an aside, this solution feels like foldl has been hijacked to make it do fold
 I wonder if in general, code could be hijacked in a similar way to act in different ways,
 by passing in well-crafted continuation arguments, a la CS3410 stack overflow style.
 
+### Writing an interpreter in CPS 
+
+Another interesting case study is to try to convert an interpreter into CPS.
+
+Consider the not-so interesting language:
+e ::= n | x | e1 + e2 | if e0 then e1 else e2
+
+We can write the interpreter in direct style in OCaml:
+```
+type expr = 
+    | Int of int
+    | Var of string
+    | Add of expr * expr
+    | IfThenElse of expr * expr * expr
+
+let rec eval e ctx = 
+    match e with 
+    | Int i -> i 
+    | Var x -> List.find_assoc ctx x 
+    | Add(e1, e2) -> eval_add e1 e2 ctx
+    | IfThenElse(e0, e1, e2) -> eval_ifthenelse e0 e1 e2 ctx
+
+and eval_add e1 e2 ctx = 
+    (eval e1 ctx) + (eval e2 ctx)
+
+and eval_ifthenelse e0 e1 e2 ctx = 
+    if eval e0 ctx = 0 then eval e1 ctx else eval e2 ctx
+```
+Following this, we can convert this to CPS
+```
+type expr = 
+    | Int of int
+    | Var of string
+    | Add of expr * expr
+    | IfThenElse of expr * expr * expr
+
+let rec eval e ctx k = 
+    match e with 
+    | Int i -> k i ctx 
+    | Var x -> k (List.find_assoc ctx x) ctx
+    | Add(e1, e2) -> eval_add e1 e2 ctx (fun v -> fun ctx -> k v ctx)
+    | IfThenElse(e0, e1, e2) -> eval_ifthenelse e0 e1 e2 ctx (fun v -> fun ctx -> k v ctx)
+
+and eval_add e1 e2 ctx k = 
+    eval e1 ctx (fun v1 -> -> eval e2 ctx (fun v2 -> k (v1 + v2) ctx))
+
+and eval_ifthenelse e0 e1 e2 ctx k = 
+    eval e0 ctx (fun g -> if g then eval e1 ctx k else eval e2 ctx k)
+```
+
 ### Translating a subset of Scheme to CPS
 
 ### An introduction to Call/CC
