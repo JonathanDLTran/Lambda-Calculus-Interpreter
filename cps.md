@@ -441,7 +441,7 @@ type expr =
 let rec eval e ctx = 
     match e with 
     | Int i -> i 
-    | Var x -> List.find_assoc ctx x 
+    | Var x -> List.assoc x ctx
     | Add(e1, e2) -> eval_add e1 e2 ctx
     | Lt(e1, e2) -> eval_lt e1 e2 ctx
     | Eq(e1, e2) -> eval_eq e1 e2 ctx
@@ -469,10 +469,13 @@ type expr =
 let rec eval e ctx k = 
     match e with 
     | Int i -> k i ctx 
-    | Var x -> k (List.find_assoc ctx x) ctx
+    | Var x -> eval_var x ctx (fun v -> k v ctx)
     | Add(e1, e2) -> eval_add e1 e2 ctx (fun v -> k v ctx)
     | Lt(e1, e2) -> eval_lt e1 e2 ctx (fun v -> k v ctx)
     | Eq(e1, e2) -> eval_eq e1 e2 ctx (fun v -> k v ctx)
+
+and eval_var x ctx k = 
+    List.assoc x ctx (fun v -> k v ctx)
 
 and eval_add e1 e2 ctx k = 
     eval e1 ctx (fun v1 -> eval e2 ctx (fun v2 -> k (v1 + v2) ctx))
