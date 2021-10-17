@@ -469,22 +469,22 @@ type expr =
 let rec eval e ctx k = 
     match e with 
     | Int i -> k i ctx 
-    | Var x -> eval_var x ctx (fun v -> k v ctx)
-    | Add(e1, e2) -> eval_add e1 e2 ctx (fun v -> k v ctx)
-    | Lt(e1, e2) -> eval_lt e1 e2 ctx (fun v -> k v ctx)
-    | Eq(e1, e2) -> eval_eq e1 e2 ctx (fun v -> k v ctx)
+    | Var x -> eval_var x ctx (fun v -> k v)
+    | Add(e1, e2) -> eval_add e1 e2 ctx (fun v -> k v)
+    | Lt(e1, e2) -> eval_lt e1 e2 ctx (fun v -> k v)
+    | Eq(e1, e2) -> eval_eq e1 e2 ctx (fun v -> k v)
 
 and eval_var x ctx k = 
-    List.assoc x ctx (fun v -> k v ctx)
+    List.assoc x ctx (fun v -> k v)
 
 and eval_add e1 e2 ctx k = 
-    eval e1 ctx (fun v1 -> eval e2 ctx (fun v2 -> k (v1 + v2) ctx))
+    eval e1 ctx (fun v1 -> eval e2 ctx (fun v2 -> k (v1 + v2)))
 
 and eval_lt e1 e2 ctx k = 
-    eval e1 ctx (fun v1 -> eval e2 ctx (fun v2 -> (if v1 < v2 then 1 else 0) ctx))
+    eval e1 ctx (fun v1 -> eval e2 ctx (fun v2 -> (if v1 < v2 then 1 else 0)))
 
 and eval_eq e1 e2 ctx k = 
-    eval e1 ctx (fun v1 -> eval e2 ctx (fun v2 -> (if v1 = v2 then 1 else 0) ctx))
+    eval e1 ctx (fun v1 -> eval e2 ctx (fun v2 -> (if v1 = v2 then 1 else 0)))
 ```
 
 If we want to add commands in our language to change stores, we might change
@@ -525,6 +525,38 @@ and eval_ifthenelse e c1 c2 ctx k =
 ```
 
 ### Translating a subset of Scheme to CPS
+
+We define this translation in cps.py.
+
+#### Basic Translation
+
+```
+T[[#t]] k = k #t
+```
+
+```
+T[[#f]] k = k #f
+```
+
+Assuming semantics where expressions substituted for variables are always reduced 
+to values already
+```
+T[[var]] k = k var 
+```
+
+```
+T[[n]] k = k n
+```
+
+#### Arithmetic/Binary Operators
+
+```
+T[[(binop e1 e2)]] k = T[[e1]] (lambda v1 (T[[e2]] (lambda v2 k (+ v1 v2))))
+```
+
+```
+T[[(unop e)]] k = T[[e]] (lambda v1 k (unop v))
+```
 
 ### An introduction to Call/CC
 
