@@ -18,9 +18,11 @@ def to_cps(expr):
         var = gen_k()
         return [LAMBDA, var, [APPLY, var, expr]]
     elif type(expr) == bool:
-        return expr
+        var = gen_k()
+        return [LAMBDA, var, [APPLY, var, expr]]
     elif expr == NIL:
-        return []
+        var = gen_k()
+        return [LAMBDA, var, [APPLY, var, expr]]
     elif type(expr) == str:
         if expr in ctx:
             return ctx[expr]
@@ -28,7 +30,8 @@ def to_cps(expr):
         elif in_quasi:
             return expr
     elif type(expr) == String:
-        return expr
+        var = gen_k()
+        return [LAMBDA, var, [APPLY, var, expr]]
     elif type(expr) == Values:
         raise RuntimeError(
             f"Cannot evaluate Values Internal Class any further; {expr}.")
@@ -63,7 +66,10 @@ def to_cps(expr):
 
 
 def main():
-    pass
+    program = []
+    cps = to_cps(program)
+    starting = [LAMBDA, K, K]
+    return [APPLY, cps, starting]
 
 
 if __name__ == "__main__":
