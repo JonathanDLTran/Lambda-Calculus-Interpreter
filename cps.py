@@ -49,7 +49,7 @@ def to_cps(expr):
         var2 = gen_k()
         return [LAMBDA, [k], [to_cps(first_arg), [LAMBDA, [var1], [to_cps(second_arg), [LAMBDA, [var2], [k, [first, var1, var2]]]]]]]
     # # Named Special Forms
-    elif first == QUOTE:
+    elif first in [QUOTE, UNQUOTE, QUASIQUOTE, UNQUOTE_SPLICING]:
         k = gen_k()
         return [LAMBDA, [k], [k, expr]]
     elif first == SET:
@@ -93,6 +93,7 @@ def main():
         [CONS, [EXP, 3, 2], [ADD, 1, 2]],
         [CAR, [CONS, [EXP, 3, 2], [ADD, 1, 2]]],
         [CDR, [CONS, [EXP, 3, 2], [ADD, 1, 2]]],
+        [QUASIQUOTE, [UNQUOTE, [ADD, 4, 5]]],
     ]
     for program in tests:
         print("-" * 70)
