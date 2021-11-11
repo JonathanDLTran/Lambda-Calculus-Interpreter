@@ -3,7 +3,7 @@ cps.py translates scheme code in continuation passing style.
 """
 from constants import *
 from scheme_classes import *
-from eval import eval_expr
+from eval import eval_expr, expr_to_str
 
 K = "k"
 K_COUNTER = 0
@@ -52,22 +52,24 @@ def to_cps(expr):
     elif first == QUOTE:
         k = gen_k()
         return [LAMBDA, [k], [k, expr]]
-    elif first == PRINTLN:
-        k = gen_k()
-        print_expr = expr[1]
-        var1 = gen_k()
-        return [LAMBDA, [k], [to_cps(print_expr), [LAMBDA, [var1], [k, [PRINTLN, var1]]]]]
     elif first == SET:
         k = gen_k()
         var = expr[1]
         set_expr = expr[2]
         var1 = gen_k()
         return [LAMBDA, [k], [to_cps(set_expr), [LAMBDA, [var1], [k, [SET, var, var1]]]]]
-    elif first == NOT:
+    elif first in [PRINTLN, NOT, CAR, CDR]:
         k = gen_k()
         bexpr = expr[1]
         var1 = gen_k()
-        return [LAMBDA, [k], [to_cps(bexpr), [LAMBDA, [var1], [k, [NOT, var1]]]]]
+        return [LAMBDA, [k], [to_cps(bexpr), [LAMBDA, [var1], [k, [first, var1]]]]]
+    elif first == CONS:
+        k = gen_k()
+        left = expr[1]
+        right = expr[2]
+        var1 = gen_k()
+        var2 = gen_k()
+        return [LAMBDA, [k], [to_cps(left), [LAMBDA, [var1], [to_cps(right), [LAMBDA, [var2], [k, [CONS, var1, var2]]]]]]]
 
 
 def main():
@@ -88,6 +90,9 @@ def main():
         [LT, 3, 2],
         [NOT, False],
         [NOT, True],
+        [CONS, [EXP, 3, 2], [ADD, 1, 2]],
+        [CAR, [CONS, [EXP, 3, 2], [ADD, 1, 2]]],
+        [CDR, [CONS, [EXP, 3, 2], [ADD, 1, 2]]],
     ]
     for program in tests:
         print("-" * 70)
@@ -96,7 +101,7 @@ def main():
         starting = [LAMBDA, [K], K]
         result = [cps, starting]
         print(f"CPS result is: {result}")
-        evaluated = eval_expr(result, {}, False)
+        evaluated = expr_to_str(eval_expr(result, {}, False))
         print(f"Evaluation gives: {evaluated}")
 
 
