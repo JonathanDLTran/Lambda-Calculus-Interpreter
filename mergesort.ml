@@ -21,3 +21,19 @@ let rec mergesort lst =
   | [x] -> [x]
   | _ -> let first, second = halve lst in 
     merge (mergesort first) (mergesort second)
+
+
+let rec partition lst e = 
+  match lst with 
+  | [] -> [], []
+  | h :: t -> 
+    let (lt, gt) = partition t e in 
+    if h <= e then (h :: lt, gt)
+    else (lt, h :: gt)
+
+let rec quicksort lst = 
+  match lst with 
+  | [] -> []
+  | h :: t -> 
+    let (first, second) = partition t h in 
+    quicksort first @ [h] @ quicksort second
