@@ -41,7 +41,7 @@ def to_cps(expr):
 
     first = expr[0]
     # Named Arithmetic Operators
-    if first in [ADD, SUB, MUL, DIV, EXP, CONCAT]:
+    if first in [ADD, SUB, MUL, DIV, EXP, CONCAT, EQ, AND, OR, NEQ, LT, LTE, GT, GTE]:
         k = gen_k()
         first_arg = expr[1]
         var1 = gen_k()
@@ -49,24 +49,55 @@ def to_cps(expr):
         var2 = gen_k()
         return [LAMBDA, [k], [to_cps(first_arg), [LAMBDA, [var1], [to_cps(second_arg), [LAMBDA, [var2], [k, [first, var1, var2]]]]]]]
     # # Named Special Forms
-    # elif first == QUOTE:
-    #     return eval_quote(expr, ctx, in_quasi)
-    # elif first == PRINTLN:
-    #     return eval_println(expr, ctx, in_quasi)
-    # elif first == SET:
-    #     return eval_set(expr, ctx, in_quasi)
-    # elif first == EQ:
-    #     return eval_eq(expr, ctx, in_quasi)
+    elif first == QUOTE:
+        k = gen_k()
+        return [LAMBDA, [k], [k, expr]]
+    elif first == PRINTLN:
+        k = gen_k()
+        print_expr = expr[1]
+        var1 = gen_k()
+        return [LAMBDA, [k], [to_cps(print_expr), [LAMBDA, [var1], [k, [PRINTLN, var1]]]]]
+    elif first == SET:
+        k = gen_k()
+        var = expr[1]
+        set_expr = expr[2]
+        var1 = gen_k()
+        return [LAMBDA, [k], [to_cps(set_expr), [LAMBDA, [var1], [k, [SET, var, var1]]]]]
+    elif first == NOT:
+        k = gen_k()
+        bexpr = expr[1]
+        var1 = gen_k()
+        return [LAMBDA, [k], [to_cps(bexpr), [LAMBDA, [var1], [k, [NOT, var1]]]]]
 
 
 def main():
-    program = [SUB, [ADD, 1, 2], 2]
-    cps = to_cps(program)
-    starting = [LAMBDA, [K], K]
-    result = [cps, starting]
-    print(result)
-    evaled = eval_expr(result, {}, False)
-    print(evaled)
+    tests = [
+        1,
+        0,
+        True,
+        False,
+        [SUB, [ADD, 1, 2], 2],
+        [MUL, 3, 4],
+        [QUOTE, 3],
+        [QUOTE, [ADD, 1, 2]],
+        [PRINTLN, [ADD, 1, 2]],
+        [SET, "x", [DIV, 3, 3]],
+        [EQ, 1, [DIV, 3, 3]],
+        [AND, True, False],
+        [OR, False, False],
+        [LT, 3, 2],
+        [NOT, False],
+        [NOT, True],
+    ]
+    for program in tests:
+        print("-" * 70)
+        print(f"Program is: {program}")
+        cps = to_cps(program)
+        starting = [LAMBDA, [K], K]
+        result = [cps, starting]
+        print(f"CPS result is: {result}")
+        evaluated = eval_expr(result, {}, False)
+        print(f"Evaluation gives: {evaluated}")
 
 
 if __name__ == "__main__":
